@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace WyzeSense
+namespace WyzeSenseCore
 {
-    public class ByteBuffer
+    internal class ByteBuffer
     {
         private Memory<byte> _buffer;
 

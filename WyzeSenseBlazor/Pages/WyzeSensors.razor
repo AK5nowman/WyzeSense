@@ -1,0 +1,166 @@
+﻿@page "/wyzesensors"
+
+@using WyzeSenseBlazor.Data
+@using WyzeSenseCore
+@using AntDesign
+@inject IWyzeSenseService SensorService
+
+<h3>Wyze</h3>
+@if (dongle == null)
+{
+<Spin />
+}
+else
+{
+    <Descriptions Title="Dongle" Bordered Column="@columnNumber" Size="small">
+        <DescriptionsItem Title="MAC">@dongle.MAC</DescriptionsItem>
+        <DescriptionsItem Title="Status">
+            @if (dongle.IsInclusive)
+            {
+                <Badge Status="warning" Text="Inclusion" />
+            }
+            else if (dongle.LEDState)
+            {
+                <Badge Status="processing" Text="Running" />
+            }
+            else
+            {
+                <Badge Status="default" Text="Running" />
+            }
+        </DescriptionsItem>
+        <DescriptionsItem Title="Device Type">@dongle.DeviceType</DescriptionsItem>
+        <DescriptionsItem Title="Auth State">@dongle.AuthState</DescriptionsItem>
+        <DescriptionsItem Title="Version" Span="2">@dongle.Version</DescriptionsItem>
+        <DescriptionsItem Title="Action" Span="2">
+            <Tooltip Title=@("LED")>
+                <Switch Checked="true" OnChange="(state)=> { if (state) SensorService.SetLEDOn(); else SensorService.SetLEDOff(); }">
+                    <CheckedChildrenTemplate>
+                        <Icon Type="bulb" Theme="outline" />
+                    </CheckedChildrenTemplate>
+                    <UnCheckedChildrenTemplate>
+                        <Icon Type="bulb" Theme="fill" />
+                    </UnCheckedChildrenTemplate>
+                </Switch>
+            </Tooltip>
+        </DescriptionsItem>
+    </Descriptions>
+}
+@if (sensorCollection == null)
+{
+<Spin />
+}
+else
+{
+
+    <Table Title="Sensors" TItem="WyzeSensor" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=>(record.Data.LastEvent != null && !record.Data.LastEvent.Equals(DateTime.MinValue)))">
+        <RowTemplate>
+            <Column @bind-Field="@context.MAC" />
+            <Column @bind-Field="@context.LastActive" />
+            <ActionColumn>
+                <Popconfirm Title="Sure to delete?" OnConfirm="()=>OnSensorDelete(context.MAC)" OkText="Yes" CancelText="No">
+                    <Button Type="primary" Icon="delete" Size="small" Danger />
+                </Popconfirm>
+            </ActionColumn>
+        </RowTemplate>
+        <ExpandTemplate>
+            <Descriptions Title="Alarm Details" Bordered Column="@columnNumber" Size="small">
+                <DescriptionsItem Title="Event Time">@context.Data.LastEvent.ServerTime</DescriptionsItem>
+                <DescriptionsItem Title="Sensor Type">@context.Data.LastEvent.Sensor</DescriptionsItem>
+                <DescriptionsItem Title="State">@context.Data.LastEvent.State</DescriptionsItem>
+                <DescriptionsItem Title="Event #">@context.Data.LastEvent.EventNumber</DescriptionsItem>
+                <DescriptionsItem Title="Battery Level">@context.Data.LastEvent.BatteryLevel</DescriptionsItem>
+                <DescriptionsItem Title="Signal">@context.Data.LastEvent.SignalStrength</DescriptionsItem>
+                <DescriptionsItem Title="Type">@context.Data.LastEvent.EventType</DescriptionsItem>
+            </Descriptions>
+        </ExpandTemplate>
+    </Table>
+}
+
+@code {
+    private Dictionary<string, int> columnNumber = new Dictionary<string, int> {
+            { "xxl", 3 },
+            { "xl", 3},
+            { "lg", 2},
+            { "md", 2},
+            { "sm", 1},
+            { "xs", 1}
+        };
+    private Dictionary<string, WyzeSensor> sensorCollection;
+    private WyzeDongleState dongle;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sensorCollection = new();
+        dongle = SensorService.GetDongleState();
+        this.SensorService.OnSensorAlarm += OnSensorAlarm;
+        this.SensorService.OnDongleStateChange += OnDongleStateChange;
+        var sensors = await SensorService.GetSensorAsync();
+        foreach (var sensor in sensors)
+        {
+            sensorCollection.TryAdd(sensor.MAC, sensor);
+        }
+
+        sensorCollection.Add("ASDFWEW", new WyzeSensor(new byte[50])
+        {
+            MAC = "ASDFWEW",
+            LastEvent = new WyzeSenseEvent(new byte[50])
+            {
+                ServerTime = DateTime.Now,
+                EventNumber = 2342,
+                EventType = WyzeEventType.Alarm,
+                MAC = "ASDFWEW",
+                Sensor = WyzeSensorType.Switch,
+                BatteryLevel = 23,
+                SignalStrength = 10
+            }
+        });
+        sensorCollection.Add("234AD4", new WyzeSensor(new byte[50])
+        {
+            MAC = "234AD4",
+            LastEvent = new WyzeSenseEvent(new byte[50])
+            {
+                ServerTime = DateTime.Now.AddHours(-2),
+                EventNumber = 56125,
+                EventType = WyzeEventType.Alarm,
+                MAC = "234AD4",
+                Sensor = WyzeSensorType.Motion,
+                BatteryLevel = 95,
+                SignalStrength = 54
+            }
+        });
+        dongle = new WyzeDongleState()
+        {
+            MAC = "DON2342",
+            Version = "Version 0.0.33 DSFS",
+            DeviceType = 1,
+            LEDState = true,
+            IsInclusive = false,
+            AuthState = 0xFF,
+        };
+    }
+    private async void OnSensorAlarm(object sender, WyzeSenseEvent wyzeEvent)
+    {
+        if (sensorCollection.TryGetValue(wyzeEvent.MAC, out var eventSensor))
+        {
+            eventSensor.LastEvent = wyzeEvent;
+        }
+        await InvokeAsync(this.StateHasChanged);
+    }
+
+    private void OnSensorDelete(string MAC)
+    {
+
+    }
+
+    private async void OnDongleStateChange(object sender, WyzeDongleState state)
+    {
+        Console.WriteLine("Received dongle state:" + state);
+        dongle = state;
+        await InvokeAsync(this.StateHasChanged);
+    }
+    private void OnLEDSwitchChange(bool newState)
+    {
+        Console.WriteLine("New state:" + newState);
+    }
+
+}

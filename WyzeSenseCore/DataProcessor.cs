@@ -6,53 +6,46 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace WyzeSense
+namespace WyzeSenseCore
 {
-    public class DataProcessor
+    internal class DataProcessor
     {
         // Fields and Properties
         protected CancellationToken CancelReads;
         protected CancellationToken CancelWrites;
-        protected readonly Channel<Message> Messages;
-        protected readonly Action<DateTime, byte[]> Process;
+        protected readonly Channel<Action> Messages;
         protected readonly Thread Thread;
 
         public DataProcessor(
-            Action<DateTime, byte[]> process,
             CancellationToken cancelReads = default(CancellationToken),
             CancellationToken cancelWrites = default(CancellationToken))
         {
             // Initialize the channel
             this.CancelReads = cancelReads;
             this.CancelWrites = cancelWrites;
-            this.Messages = Channel.CreateUnbounded<Message>();
-            this.Process = process;
+            this.Messages = Channel.CreateUnbounded<Action>();
 
             Thread = new Thread(this.Dequeue);
             Thread.Start();
         }
 
 
-        public void Queue(byte[] packet)
+        public void Queue(Action WyzeAction)
         {
             if (!this.CancelWrites.IsCancellationRequested)
-                this.Messages.Writer.TryWrite(new Message
-                {
-                    QueueTime = DateTime.Now,
-                    Data = packet
-                });
+                this.Messages.Writer.TryWrite(WyzeAction);
         }
 
         private async void Dequeue()
         {
             while (!this.CancelReads.IsCancellationRequested)
             {
-                var msg = await this.Messages.Reader.ReadAsync(this.CancelReads);
-                if (msg != null)
+                try
                 {
-                    this.Process(msg.QueueTime, msg.Data);
+                    var msg = await this.Messages.Reader.ReadAsync(this.CancelReads);
+                    msg?.Invoke();
                 }
-                  
+                catch (OperationCanceledException oce) { }
             }
         }
 
@@ -61,12 +54,6 @@ namespace WyzeSense
             this.CancelWrites = new CancellationToken(true);
             this.Messages.Reader.Completion.Wait();
             this.CancelReads = new CancellationToken(true);
-        }
-
-        protected class Message
-        {
-            public DateTime QueueTime;
-            public byte[] Data;
         }
     }
 }

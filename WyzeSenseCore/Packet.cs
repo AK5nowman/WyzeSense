@@ -7,9 +7,9 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace WyzeSense
+namespace WyzeSenseCore
 {
-    public class Command
+    internal class Command
     {
         public enum CommandTypes : byte
         {
@@ -32,6 +32,7 @@ namespace WyzeSense
             NotifySensorAlarm = 0x19,
             NotifySensorStart = 0x20,
             StartStopScan = 0x1C,
+            StartStopScanResp = 0x1D,
             GetSensorR1 = 0x21,
             VerifySensor = 0x23,
             VerifySensorResp = 0x24,
@@ -39,10 +40,12 @@ namespace WyzeSense
             GetDeviceType = 0x27,
             GetDeviceTypeResp = 0x28,
             GetSensorCount = 0x2E,
+            GetSensorCountResp = 0x2F,
             GetSensorList = 0x30,
+            GetSensorListResp = 0x31,
             RequestSyncTime = 0x32,
             NotifyEventLog = 0x35,
-            Unk1 = 0x37,
+            Unk1 = 0x37,//Is this ongoing activity for motion sensors?
             SetLED = 0x3d,
             SetLEDResp = 0x3e,
             Ack = 0xFF
@@ -84,7 +87,7 @@ namespace WyzeSense
         public static Command NOTIFY_EVENT_LOG => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.NotifyEventLog);
         public static Command CMD_SET_LIGHT => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.SetLED);
     }
-    public class BasePacket
+    internal class BasePacket
     {
         public Command PktCommand { get; set; }
         public byte Length { get; set; }
@@ -175,7 +178,7 @@ namespace WyzeSense
         public static BasePacket SetLightOn() => new BytePacket(Command.CMD_SET_LIGHT, 0xff);
         public static BasePacket SetLightOff() => new BytePacket(Command.CMD_SET_LIGHT, 0);
     }
-    public class BytePacket : BasePacket
+    internal class BytePacket : BasePacket
     {
         public byte Value { get; set; }
         public BytePacket(Command Cmd, byte Value) : base(Cmd)
@@ -187,7 +190,7 @@ namespace WyzeSense
             return new byte[1] { Value };
         }
     }
-    public class ByteArrayPacket : BasePacket
+    internal class ByteArrayPacket : BasePacket
     {
         public byte [] Value { get; set; }
         public ByteArrayPacket(Command Cmd, byte [] Value) : base(Cmd)
@@ -199,7 +202,7 @@ namespace WyzeSense
             return Value;
         }
     }
-    public class AckPacket : BasePacket
+    internal class AckPacket : BasePacket
     {
         public byte ToAcknowledge { get; set; }
         public AckPacket(byte CmdToAck) : base(Command.ASYNC_ACK)
