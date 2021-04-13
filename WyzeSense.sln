@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WyzeSenseApp", "WyzeSenseAp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WyzeSenseBlazor", "WyzeSenseBlazor\WyzeSenseBlazor.csproj", "{F39D8411-219F-4408-BB75-25F6F211B7B3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{53F7ABD6-81A2-4945-A3E2-812618C4DBBB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{F39D8411-219F-4408-BB75-25F6F211B7B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F39D8411-219F-4408-BB75-25F6F211B7B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F39D8411-219F-4408-BB75-25F6F211B7B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53F7ABD6-81A2-4945-A3E2-812618C4DBBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53F7ABD6-81A2-4945-A3E2-812618C4DBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53F7ABD6-81A2-4945-A3E2-812618C4DBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53F7ABD6-81A2-4945-A3E2-812618C4DBBB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
