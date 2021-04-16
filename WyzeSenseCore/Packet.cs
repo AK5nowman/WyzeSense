@@ -158,17 +158,14 @@ namespace WyzeSenseCore
         }
         public static BasePacket RequestEnr(byte[] RValue)
         {
-            if (RValue.Length != 16) { Logger.Error("[Packet][RequestEnr] RValue length != 16"); return null; }
             return new ByteArrayPacket(Command.CMD_GET_ENR, RValue); ;
         }
         public static BasePacket DeleteSensor(string MAC)
         {
-            if (MAC.Length != 8) { Logger.Error("[Packet][DeleteSensor] MAC length != 8"); return null; }
             return new ByteArrayPacket(Command.CMD_DEL_SENSOR, ASCIIEncoding.ASCII.GetBytes(MAC));
         }
         public static BasePacket VerifySensor(string MAC)
         {
-            if (MAC.Length != 8) { Logger.Error("[Packet][VerifySensor] MAC length != 8"); return null; }
             byte[] buffer = new byte[10];
             Array.Copy(ASCIIEncoding.ASCII.GetBytes(MAC), buffer, 8);
             buffer[8] = 0xff;

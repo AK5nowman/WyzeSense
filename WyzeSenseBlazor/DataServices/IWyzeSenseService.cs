@@ -12,10 +12,11 @@ namespace WyzeSenseBlazor.Data
         event EventHandler<WyzeSensor> OnRemoveSensor;
         event EventHandler<WyzeSenseEvent> OnSensorAlarm;
         event EventHandler<WyzeDongleState> OnDongleStateChange;
+        event EventHandler<string> OnFailStart
 
+        bool Running { get; set; }
 
         void Stop();
-        Task StartAsync();
         void SetLEDOn();
         void SetLEDOff();
         void StartScanAsync(int Timeout);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WyzeSenseCore
@@ -13,8 +14,9 @@ namespace WyzeSenseCore
         event EventHandler<WyzeSenseEvent> OnSensorAlarm;
         event EventHandler<WyzeDongleState> OnDongleStateChange;
 
-        void Stop();
-        Task StartAsync();
+        void Stop(); 
+        bool OpenDevice(string devicePath);
+        Task StartAsync(CancellationToken cancellationToken);
         void SetLedAsync(bool On);
         void StartScanAsync(int Timeout);
         Task StopScanAsync();

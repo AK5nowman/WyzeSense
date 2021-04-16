@@ -40,7 +40,6 @@ namespace WyzeSenseBlazor
 
             services.AddSingleton<IWyzeDongle, WyzeDongle>();
             services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
-            services.PostConfigure()
 
         }
 

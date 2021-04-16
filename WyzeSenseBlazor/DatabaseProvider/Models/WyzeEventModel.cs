@@ -17,6 +17,7 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
         public string SensorMAC { get; set; }
         //FKey
         public int EventTypeId { get; set; }
+
         public bool State { get; set; }
         public int EventId { get; set; }
         public int Battery { get; set; }

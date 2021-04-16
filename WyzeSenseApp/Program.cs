@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace WyzeSenseApp
 {
@@ -8,7 +9,8 @@ namespace WyzeSenseApp
     {
         static async Task Main(string[] args)
         {
-            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(args[0]);
+            ILogger logger;
+            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(logger);
             dongle.OnSensorAlarm += Dongle_OnSensorAlarm;
             dongle.OnAddSensor += Dongle_OnAddSensor;
             dongle.OnRemoveSensor += Dongle_OnRemoveSensor;
