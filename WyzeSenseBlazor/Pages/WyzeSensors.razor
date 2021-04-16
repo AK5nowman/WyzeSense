@@ -55,7 +55,14 @@ else
     <Table Title="Sensors" TItem="WyzeSensor" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=>(record.Data.LastEvent != null && !record.Data.LastEvent.Equals(DateTime.MinValue)))">
         <RowTemplate>
             <Column @bind-Field="@context.MAC" />
-            <Column @bind-Field="@context.LastActive" />
+            @if (context.LastActive == DateTime.MinValue)
+            {
+                <Column @bind-Field="@context.LastActive" >-</Column>
+            }
+            else
+            {
+                <Column @bind-Field="@context.LastActive" />
+            }
             <ActionColumn>
                 <Popconfirm Title="Sure to delete?" OnConfirm="()=>OnSensorDelete(context.MAC)" OkText="Yes" CancelText="No">
                     <Button Type="primary" Icon="delete" Size="small" Danger />

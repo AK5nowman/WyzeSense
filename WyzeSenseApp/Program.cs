@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WyzeSenseApp
@@ -12,12 +13,17 @@ namespace WyzeSenseApp
             dongle.OnAddSensor += Dongle_OnAddSensor;
             dongle.OnRemoveSensor += Dongle_OnRemoveSensor;
             dongle.OnDongleStateChange += Dongle_OnDongleStateChange;
-            Task processDongle =  dongle.StartAsync();
+            Task processDongle =  dongle.StartAsync(default(CancellationToken));
+
+            Random rand = new Random();
+            byte[] toB64 = new byte[8];
+            rand.NextBytes(toB64);
 
             bool done = false;
             while (!done)
             {
-                switch (Console.ReadLine())
+                string line = Console.ReadLine();
+                switch (line.Split(' ')[0])
                 {
                     case "ledon":
                         dongle.SetLedAsync(true);
@@ -40,6 +46,14 @@ namespace WyzeSenseApp
                         break;
                     case "loglevel":
                         WyzeSenseCore.Logger.LogLevel = 4;
+                        break;
+                    case "del":
+                        if (line.Split(' ').Length < 2) break;
+                        string mac = line.Split(' ')[1];
+                        if (mac.Length != 8) { Console.WriteLine("Invalid MAC"); break; }
+
+                        dongle.DeleteSensor(mac);
+
                         break;
                     default:
                         Console.WriteLine("Type 'q' to exit");

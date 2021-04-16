@@ -10,15 +10,13 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
     public class WyzeSensorModel
     {
         [Key]
-        public int Id { get; set; }
         [MaxLength(8)]
         public string MAC { get; set; }
-
+        public string Alias { get; set; }
         public string Description { get; set; }
-
         public DateTime LastActive { get; set; }
-
         public int SensorTypeId { get; set; }
+        
         //Navigation
         public WyzeSensorTypeModel SensorType { get; set; }
 

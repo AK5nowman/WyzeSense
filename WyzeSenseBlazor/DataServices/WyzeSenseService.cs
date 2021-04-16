@@ -1,17 +1,26 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using WyzeSenseBlazor.DatabaseProvider;
+using WyzeSenseBlazor.DatabaseProvider.Models;
 using WyzeSenseCore;
 
 namespace WyzeSenseBlazor.Data
 {
-    public class WyzeSenseService : IWyzeSenseService
+    public class WyzeSenseService : IWyzeSenseService, IHostedService
     {
+        private readonly ILogger _logger;
         private readonly WyzeSenseCore.IWyzeDongle _wyzeDongle;
-        public WyzeSenseService(WyzeSenseCore.IWyzeDongle wyzeDongle)
+        private readonly IDbContextFactory<WyzeDbContext> _dbContextFactory;
+        public WyzeSenseService(ILogger logger, WyzeSenseCore.IWyzeDongle wyzeDongle, IDbContextFactory<DatabaseProvider.WyzeDbContext> dbContextFactory)
         {
-            Console.WriteLine("New wyzesenseservice");
+            _dbContextFactory = dbContextFactory;
+
             _wyzeDongle = wyzeDongle;
             _wyzeDongle.OnAddSensor += _wyzeDongle_OnAddSensor;
             _wyzeDongle.OnRemoveSensor += _wyzeDongle_OnRemoveSensor;
@@ -24,6 +33,15 @@ namespace WyzeSenseBlazor.Data
         public event EventHandler<WyzeSenseEvent> OnSensorAlarm;
         public event EventHandler<WyzeDongleState> OnDongleStateChange;
 
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
         private void _wyzeDongle_OnDongleStateChange(object sender, WyzeDongleState e)
         {
             this.OnDongleStateChange?.Invoke(this, e);
@@ -31,8 +49,34 @@ namespace WyzeSenseBlazor.Data
 
         private void _wyzeDongle_OnSensorAlarm(object sender, WyzeSenseEvent e)
         {
-            Console.WriteLine("wyzesenseservice onsensoralarm");
             this.OnSensorAlarm?.Invoke(this, e);
+
+            var dbContext = _dbContextFactory.CreateDbContext();
+
+            var eventdbModel = new WyzeEventModel()
+            {
+                SensorMAC = e.MAC,
+                State = e.State,
+                EventId = e.EventNumber,
+                Battery = e.BatteryLevel,
+                Signal = e.SignalStrength,
+                Time = e.ServerTime,
+                EventTypeId = (int)e.EventType
+            };
+
+            dbContext.Entry(eventdbModel)
+                .Reference(x => x.Sensor)
+                .Load();
+            if(eventdbModel.Sensor == null)
+            {
+                //Sensor is not in the database, need to enter a new record
+            }
+            else if(eventdbModel.Sensor.SensorType == null)
+            {
+                //if it is null, and the sensortype is not set, set it with event info
+
+            }
+            var eventType = dbContext.EventTypes.Single(et => et.Id == (int)e.EventType);
         }
 
         private void _wyzeDongle_OnRemoveSensor(object sender, WyzeSensor e)

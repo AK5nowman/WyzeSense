@@ -30,13 +30,15 @@ namespace WyzeSenseCore
             RequestDongleVersion = 0x16,
             RequestDongleVersionResp = 0x17,
             NotifySensorAlarm = 0x19,
-            NotifySensorStart = 0x20,
             StartStopScan = 0x1C,
             StartStopScanResp = 0x1D,
-            GetSensorR1 = 0x21,
+            NotifySensorStart = 0x20,
+            SetSensorRandomDate = 0x21,
+            SensorRandomDateResp = 0x22,
             VerifySensor = 0x23,
             VerifySensorResp = 0x24,
             DeleteSensor = 0x25,
+            DeleteSensorResp = 0x26,
             GetDeviceType = 0x27,
             GetDeviceTypeResp = 0x28,
             GetSensorCount = 0x2E,
@@ -45,7 +47,7 @@ namespace WyzeSenseCore
             GetSensorListResp = 0x31,
             RequestSyncTime = 0x32,
             NotifyEventLog = 0x35,
-            Unk1 = 0x37,//Is this ongoing activity for motion sensors?
+            Unk1 = 0x37,//Is this missed alarms?
             SetLED = 0x3d,
             SetLEDResp = 0x3e,
             Ack = 0xFF
@@ -74,7 +76,7 @@ namespace WyzeSenseCore
         public static Command CMD_FINISH_AUTH => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.FinishAuth);
         public static Command CMD_GET_DONGLE_VERSION => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.RequestDongleVersion);
         public static Command CMD_START_STOP_SCAN => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.StartStopScan);
-        public static Command CMD_GET_SENSOR_R1 => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.GetSensorR1);
+        public static Command CMD_SET_SENSOR_RANDOM_DATE => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.SetSensorRandomDate);
         public static Command CMD_VERIFY_SENSOR => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.VerifySensor);
         public static Command CMD_DEL_SENSOR => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.DeleteSensor);
         public static Command CMD_GET_SENSOR_COUNT => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.GetSensorCount);
@@ -143,6 +145,17 @@ namespace WyzeSenseCore
         public static BasePacket RequestSensorCount() => new BasePacket(Command.CMD_GET_SENSOR_COUNT);
         public static BasePacket UpdateCC1310() => new BasePacket(Command.CMD_UPDATE_CC1310);
         public static BasePacket UpdateCH554() => new BasePacket(Command.CMD_SET_CH554_UPGRADE);
+        public static BasePacket SetSensorRandomDate(string MAC)
+        {
+            Random random = new Random((int)DateTime.Now.Ticks);
+            //dongle_app generates a random string of the following characters.
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            for (int i = 0; i < 16; i++)
+                MAC += chars[random.Next(chars.Length)];
+
+            return new ByteArrayPacket(Command.CMD_SET_SENSOR_RANDOM_DATE, ASCIIEncoding.ASCII.GetBytes(MAC));
+        }
         public static BasePacket RequestEnr(byte[] RValue)
         {
             if (RValue.Length != 16) { Logger.Error("[Packet][RequestEnr] RValue length != 16"); return null; }
@@ -156,23 +169,12 @@ namespace WyzeSenseCore
         public static BasePacket VerifySensor(string MAC)
         {
             if (MAC.Length != 8) { Logger.Error("[Packet][VerifySensor] MAC length != 8"); return null; }
-            using (BinaryWriter writer = new BinaryWriter(new MemoryStream()))
-            {
-                writer.Write(MAC);
-                writer.Write(new byte[] { 0xff, 0x04 });
-                return new ByteArrayPacket(Command.CMD_VERIFY_SENSOR, (writer.BaseStream as MemoryStream).ToArray());
-            }
-        }
-        public static BasePacket RequestSensorR1(string MAC, byte[] RValue)
-        {
-            if (RValue.Length != 16) { Logger.Error("[Packet][RequestSensorR1] RValue length != 16"); return null; }
-            if (MAC.Length != 8) { Logger.Error("[Packet][RequestSensorR1] MAC length != 8"); return null; }
-            using (BinaryWriter writer = new BinaryWriter(new MemoryStream()))
-            {
-                writer.Write(MAC);
-                writer.Write(RValue);
-                return new ByteArrayPacket(Command.CMD_VERIFY_SENSOR, (writer.BaseStream as MemoryStream).ToArray());
-            }
+            byte[] buffer = new byte[10];
+            Array.Copy(ASCIIEncoding.ASCII.GetBytes(MAC), buffer, 8);
+            buffer[8] = 0xff;
+            buffer[9] = 0x04;
+            
+            return new ByteArrayPacket(Command.CMD_VERIFY_SENSOR, buffer);
         }
         public static BasePacket SyncTimeAck() => new ByteArrayPacket(Command.NOTIFY_SYNC_TIME, BitConverter.GetBytes(DateTime.UtcNow.Ticks));
         public static BasePacket SetLightOn() => new BytePacket(Command.CMD_SET_LIGHT, 0xff);

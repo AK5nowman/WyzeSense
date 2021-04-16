@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="AntDesign" Version="0.7.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="5.0.5" />
   </ItemGroup>
 

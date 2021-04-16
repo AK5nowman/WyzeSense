@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WyzeSenseBlazor.Data;
 using WyzeSenseCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace WyzeSenseBlazor
 {
@@ -31,11 +32,15 @@ namespace WyzeSenseBlazor
             services.AddServerSideBlazor();
             services.AddAntDesign();
 
-            var wyzeService = new WyzeDongle("/dev/hidraw1");
-            wyzeService.StartAsync();
+            string dbPath = Configuration.GetSection("Database")["Path"];
 
-            services.AddSingleton<IWyzeDongle>(wyzeService);
+            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(dbPath));
+
+            //TODO: Add HostedService Iface
+
+            services.AddSingleton<IWyzeDongle, WyzeDongle>();
             services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
+            services.PostConfigure()
 
         }
 

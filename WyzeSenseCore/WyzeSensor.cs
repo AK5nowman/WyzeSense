@@ -8,13 +8,13 @@ namespace WyzeSenseCore
 {
     public sealed class WyzeSensor
     {
-        public DateTime LastActive;
         public string MAC;
-        public WyzeSenseEvent LastEvent;
+        public WyzeSensorType Type;
+        public byte Version;
         public WyzeSensor(ReadOnlySpan<byte> Data)
         {
             MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(5, 8));
-            LastActive = DateTime.MinValue;
         }
+        public WyzeSensor() { }
     }
 }
