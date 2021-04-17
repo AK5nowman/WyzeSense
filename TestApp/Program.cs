@@ -17,7 +17,8 @@ namespace TestApp
         {
             if (File.Exists("wyzesensor.db"))
                 File.Delete("wyzesensor.db");
-            using (var db = new WyzeDbContext(new DbContextOptionsBuilder().UseSqlite("Data Source=wyzesensor.db")))
+                var options = new DbContextOptionsBuilder().UseSqlite("Data Source=wyzesensor.db");
+            using (var db = new WyzeDbContext( options.Options))
             {
                 db.Database.EnsureCreated();
                 Console.WriteLine("getting events");

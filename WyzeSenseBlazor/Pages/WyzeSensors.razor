@@ -3,6 +3,7 @@
 @using WyzeSenseBlazor.Data
 @using WyzeSenseCore
 @using AntDesign
+@using WyzeSenseBlazor.DatabaseProvider.Models
 @inject IWyzeSenseService SensorService
 
 <h3>Wyze</h3>
@@ -45,6 +46,7 @@ else
         </DescriptionsItem>
     </Descriptions>
 }
+
 @if (sensorCollection == null)
 {
 <Spin />
@@ -52,7 +54,7 @@ else
 else
 {
 
-    <Table Title="Sensors" TItem="WyzeSensor" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=>(record.Data.LastEvent != null && !record.Data.LastEvent.Equals(DateTime.MinValue)))">
+    <Table Title="Sensors" TItem="WyzeSensorModel" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=> record.Data.Events.Count() > 0)">
         <RowTemplate>
             <Column @bind-Field="@context.MAC" />
             @if (context.LastActive == DateTime.MinValue)
@@ -70,15 +72,22 @@ else
             </ActionColumn>
         </RowTemplate>
         <ExpandTemplate>
-            <Descriptions Title="Alarm Details" Bordered Column="@columnNumber" Size="small">
-                <DescriptionsItem Title="Event Time">@context.Data.LastEvent.ServerTime</DescriptionsItem>
-                <DescriptionsItem Title="Sensor Type">@context.Data.LastEvent.Sensor</DescriptionsItem>
-                <DescriptionsItem Title="State">@context.Data.LastEvent.State</DescriptionsItem>
-                <DescriptionsItem Title="Event #">@context.Data.LastEvent.EventNumber</DescriptionsItem>
-                <DescriptionsItem Title="Battery Level">@context.Data.LastEvent.BatteryLevel</DescriptionsItem>
-                <DescriptionsItem Title="Signal">@context.Data.LastEvent.SignalStrength</DescriptionsItem>
-                <DescriptionsItem Title="Type">@context.Data.LastEvent.EventType</DescriptionsItem>
-            </Descriptions>
+            <Table TItem="WyzeEventModel" DataSource="@context.Data.Events" order>
+                <RowTemplate Context="eventContext">
+                    <Column @bind-Field="@eventContext.Time" />
+                    <Column @bind-Field="@eventContext.State">
+                        @{ 
+                            var color = eventContext.State ? "green" : "red";
+                            <Tag Color="@color">@context.Data.SensorType.States.Single(p => p.State == eventContext.State).Type</Tag>
+                        }
+                    </Column>
+                    <Column @bind-Field="@context.Data.SensorType.States.Single(p=> p.State == eventContext.State).Type" />
+                    <Column @bind-Field="@eventContext.EventType.Type" />
+                    <Column @bind-Field="@eventContext.Battery" />
+                    <Column @bind-Field="@eventContext.Signal" />
+                    <Column @bind-Field="@eventContext.EventId" />
+                </RowTemplate>
+            </Table>
         </ExpandTemplate>
     </Table>
 }
@@ -92,71 +101,47 @@ else
             { "sm", 1},
             { "xs", 1}
         };
-    private Dictionary<string, WyzeSensor> sensorCollection;
+
+    private Dictionary<string, WyzeSensorModel> sensorCollection;
     private WyzeDongleState dongle;
 
     protected override async Task OnInitializedAsync()
     {
         sensorCollection = new();
+
         dongle = SensorService.GetDongleState();
         this.SensorService.OnSensorAlarm += OnSensorAlarm;
         this.SensorService.OnDongleStateChange += OnDongleStateChange;
+        SensorService.OnAddSensor += OnAddSensor;
+        SensorService.OnRemoveSensor += OnRemoveSensor;
+
         var sensors = await SensorService.GetSensorAsync();
         foreach (var sensor in sensors)
         {
             sensorCollection.TryAdd(sensor.MAC, sensor);
+            
         }
 
-        sensorCollection.Add("ASDFWEW", new WyzeSensor(new byte[50])
-        {
-            MAC = "ASDFWEW",
-            LastEvent = new WyzeSenseEvent(new byte[50])
-            {
-                ServerTime = DateTime.Now,
-                EventNumber = 2342,
-                EventType = WyzeEventType.Alarm,
-                MAC = "ASDFWEW",
-                Sensor = WyzeSensorType.Switch,
-                BatteryLevel = 23,
-                SignalStrength = 10
-            }
-        });
-        sensorCollection.Add("234AD4", new WyzeSensor(new byte[50])
-        {
-            MAC = "234AD4",
-            LastEvent = new WyzeSenseEvent(new byte[50])
-            {
-                ServerTime = DateTime.Now.AddHours(-2),
-                EventNumber = 56125,
-                EventType = WyzeEventType.Alarm,
-                MAC = "234AD4",
-                Sensor = WyzeSensorType.Motion,
-                BatteryLevel = 95,
-                SignalStrength = 54
-            }
-        });
-        dongle = new WyzeDongleState()
-        {
-            MAC = "DON2342",
-            Version = "Version 0.0.33 DSFS",
-            DeviceType = 1,
-            LEDState = true,
-            IsInclusive = false,
-            AuthState = 0xFF,
-        };
     }
-    private async void OnSensorAlarm(object sender, WyzeSenseEvent wyzeEvent)
+    private async void OnRemoveSensor(object sender, string sensorMAC)
     {
-        if (sensorCollection.TryGetValue(wyzeEvent.MAC, out var eventSensor))
-        {
-            eventSensor.LastEvent = wyzeEvent;
-        }
+        sensorCollection.Remove(sensorMAC);
+        await InvokeAsync(this.StateHasChanged);
+    }
+    private async void OnAddSensor(object sender, WyzeSensorModel sensor)
+    {
+        sensorCollection.Add(sensor.MAC, sensor);
+        await InvokeAsync(this.StateHasChanged);
+    }
+    private async void OnSensorAlarm(object sender, WyzeEventModel wyzeEvent)
+    {
+
         await InvokeAsync(this.StateHasChanged);
     }
 
-    private void OnSensorDelete(string MAC)
+    private async void OnSensorDelete(string MAC)
     {
-
+        await SensorService.RequestDeleteSensor(MAC);
     }
 
     private async void OnDongleStateChange(object sender, WyzeDongleState state)

@@ -20,6 +20,7 @@ namespace WyzeSenseCore
         void SetLedAsync(bool On);
         void StartScanAsync(int Timeout);
         Task StopScanAsync();
+        Task DeleteSensorAsync(string MAC);
         void RequestRefreshSensorListAsync();
         Task<WyzeSensor[]> GetSensorAsync();
         WyzeDongleState GetDongleState();

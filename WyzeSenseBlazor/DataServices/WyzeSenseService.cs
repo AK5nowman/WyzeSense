@@ -24,34 +24,38 @@ namespace WyzeSenseBlazor.Data
 
         private string devicePath;
 
+        private Task processTask;
+
         private WyzeDongleState dongleState;
         public WyzeSenseService(ILogger<WyzeSenseService> logger, WyzeSenseCore.IWyzeDongle wyzeDongle, IDbContextFactory<DatabaseProvider.WyzeDbContext> dbContextFactory)
         {
-            _logger.LogInformation($"Creating WyzeSenseService");
             _logger = logger;
+            _logger.LogInformation($"Creating WyzeSenseService");
+
             _dbContextFactory = dbContextFactory;
             _wyzeDongle = wyzeDongle;
 
             configChannel = Channel.CreateBounded<string>(capacity: 5);
 
             //Lets read config from DB, if it exists. 
-            var dbContext = dbContextFactory.CreateDbContext();
-            string usbPath = dbContext.Configuation.Single(c => c.Setting == "usbPath").Value;
-            
-            if(usbPath == null || usbPath.Length == 0)
-                _logger.LogInformation($"No valid usbPath device defined in database");
-            else
-                devicePath = usbPath;
-
+            using (var dbContext = dbContextFactory.CreateDbContext())
+            {
+                dbContext.Database.EnsureCreated();
+                var usbPair = dbContext.Configuation.Single(c => c.Setting == "usbPath");
+                if (usbPair == null)
+                    _logger.LogInformation($"No valid usbPath device defined in database");
+                else
+                    devicePath = usbPair.Value;
+            }
             _wyzeDongle.OnAddSensor += _wyzeDongle_OnAddSensor;
             _wyzeDongle.OnRemoveSensor += _wyzeDongle_OnRemoveSensor;
             _wyzeDongle.OnSensorAlarm += _wyzeDongle_OnSensorAlarm;
             _wyzeDongle.OnDongleStateChange += _wyzeDongle_OnDongleStateChange;
         }
 
-        public event EventHandler<WyzeSensor> OnAddSensor;
-        public event EventHandler<WyzeSensor> OnRemoveSensor;
-        public event EventHandler<WyzeSenseEvent> OnSensorAlarm;
+        public event EventHandler<WyzeSensorModel> OnAddSensor;
+        public event EventHandler<string> OnRemoveSensor;
+        public event EventHandler<WyzeEventModel> OnSensorAlarm;
         public event EventHandler<WyzeDongleState> OnDongleStateChange;
         public event EventHandler<string> OnFailStart;
 
@@ -96,11 +100,29 @@ namespace WyzeSenseBlazor.Data
             this.OnDongleStateChange?.Invoke(this, e);
         }
 
-        private void _wyzeDongle_OnSensorAlarm(object sender, WyzeSenseEvent e)
+        private async void _wyzeDongle_OnSensorAlarm(object sender, WyzeSenseEvent e)
         {
-            this.OnSensorAlarm?.Invoke(this, e);
 
             using (var dbContext = _dbContextFactory.CreateDbContext()) {
+
+
+                //Lets load up related data
+                //TODO: Explore different options
+                var sensorModel = await GetOrCreateSensor(e.MAC, (int)e.Sensor);
+                var eventTypeModel = await dbContext.EventTypes.SingleAsync(et => et.Id == (int)e.EventType);
+
+
+
+                if (eventTypeModel == null)
+                {
+                    eventTypeModel = new WyzeEventTypeModel()
+                    {
+                        Id = (int)e.EventType,
+                        Type = "Unknown"
+                    };
+                    //TODO: Do i need this call?
+                    //await dbContext.EventTypes.AddAsync(eventTypeModel);
+                }
 
                 var eventdbModel = new WyzeEventModel()
                 {
@@ -110,79 +132,85 @@ namespace WyzeSenseBlazor.Data
                     Signal = e.SignalStrength,
                     Time = e.ServerTime,
                 };
+                eventdbModel.EventType = eventTypeModel;
+                eventdbModel.Sensor = sensorModel;
+                eventdbModel.Sensor.LastActive = e.ServerTime;
 
-                //Lets load up related data
-                //TODO: Explore different options
-                var sensorModel = dbContext.Sensors.Single(s => s.MAC == e.MAC);
-                var eventTypeModel = dbContext.EventTypes.Single(et => et.Id == (int)e.EventType);
+                await dbContext.SaveChangesAsync();
 
+                OnSensorAlarm?.Invoke(this, eventdbModel);
+            }
+        }
+
+        private async void _wyzeDongle_OnRemoveSensor(object sender, WyzeSensor e)
+        {
+
+            using (var dbContext = _dbContextFactory.CreateDbContext())
+            {
+                var sensorModel = await dbContext.Sensors.SingleAsync(s => s.MAC == e.MAC);
+                if(sensorModel != null)
+                {
+                    dbContext.Sensors.Remove(sensorModel);
+                    //TODO:Verify this deletes events and not model type
+                    await dbContext.SaveChangesAsync();
+                }
+                OnRemoveSensor?.Invoke(this, sensorModel.MAC);
+            }
+        }
+        
+        private async void _wyzeDongle_OnAddSensor(object sender, WyzeSensor e)
+        {
+
+            var sensorModel = await GetOrCreateSensor(e.MAC, (int)e.Type);
+            using (var dbContext = _dbContextFactory.CreateDbContext())
+            {
+                await dbContext.Sensors.AddAsync(sensorModel);
+                await dbContext.SaveChangesAsync();
+            }
+            OnAddSensor?.Invoke(this, sensorModel);
+        }
+
+        private async Task<WyzeSensorModel> GetOrCreateSensor(string MAC, int SensorType)
+        {
+            using (var dbContext = _dbContextFactory.CreateDbContext())
+            {
+                var sensorModel = await dbContext.Sensors.SingleAsync(s => s.MAC == MAC);
 
                 if (sensorModel == null)
                 {
                     //Sensor is not in the database, need to enter a new record
-                    _logger.LogInformation($"Adding a new sensor to database {eventdbModel.SensorMAC}");
+                    _logger.LogInformation($"Adding a new sensor to database {MAC}");
                     sensorModel = new WyzeSensorModel()
                     {
-                        MAC = e.MAC,
+                        MAC = MAC,
                         Alias = "",
                         Description = "",
-                        LastActive = e.ServerTime,
+                        LastActive = DateTime.Now,
                     };
-                    dbContext.Sensors.Add(sensorModel);
-                }
-                if (sensorModel.SensorType == null)
-                {
-                    //if sensor type is null, and the senseor type exists, set it, else create unknown sensor type
-                    var sensorType = dbContext.SensorTypes.Single(st => st.Id == (int)e.Sensor);
+
+                    var sensorType = await dbContext.SensorTypes.SingleAsync(st => st.Id == SensorType);
                     if (sensorType == null)
                     {
-                        _logger.LogInformation($"Creating a new sensor type: {(int)e.Sensor}");
+                        _logger.LogInformation($"Creating a new sensor type: {SensorType}");
                         //Lets create  a new sensor type with a generic name.
                         WyzeSensorTypeModel newSensorModel = new()
                         {
-                            Id = (int)e.Sensor,
+                            Id = SensorType,
                             Type = "Unknown",
                             States = new List<WyzeSensorStateModel>()
                             {
-                                new WyzeSensorStateModel{ SensorTypeId = (int)e.Sensor, State = true, Type = "One" },
-                                new WyzeSensorStateModel{ SensorTypeId = (int)e.Sensor, State = false, Type = "Zero" },
+                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = true, Type = "One" },
+                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = false, Type = "Zero" },
                             }
                         };
                         sensorType = newSensorModel;
-                        //dbContext.SensorTypes.Add(newSensorModel);
                     }
 
                     sensorModel.SensorType = sensorType;
-
-                    _logger.LogInformation($"Adding previously unknown sensor type to sensor {eventdbModel.SensorMAC}");
                 }
 
-                if(eventTypeModel == null)
-                {
-                    eventTypeModel = new WyzeEventTypeModel()
-                    {
-                        Id = (int)e.EventType,
-                        Type = "Unknown"
-                    };
-                    dbContext.EventTypes.Add(eventTypeModel);
-                }
-
-                eventdbModel.EventType = eventTypeModel;
-                eventdbModel.Sensor = sensorModel;
-
-                dbContext.SaveChanges();
-
+                return sensorModel;
             }
-        }
-
-        private void _wyzeDongle_OnRemoveSensor(object sender, WyzeSensor e)
-        {
-            this.OnRemoveSensor?.Invoke(this, e);
-        }
-
-        private void _wyzeDongle_OnAddSensor(object sender, WyzeSensor e)
-        {
-            this.OnAddSensor?.Invoke(this, e);
         }
 
 
@@ -216,10 +244,32 @@ namespace WyzeSenseBlazor.Data
             await _wyzeDongle.StopScanAsync();
         }
 
-        public Task<WyzeSensor[]> GetSensorAsync()
+        //Currently Returns all events with each sensor.
+        public async Task<WyzeSensorModel[]> GetSensorAsync()
         {
-            return _wyzeDongle.GetSensorAsync();
+            using (var dbContext = _dbContextFactory.CreateDbContext())
+            {
+                return await dbContext.Sensors
+                    .Include(p => p.Events)
+                        .ThenInclude(p => p.EventType)
+                    .Include(p => p.SensorType)
+                        .ThenInclude(p => p.States)
+                    .ToArrayAsync();
+            }
         }
+        public async Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC, int count)
+        {
+            using (var dbContext = _dbContextFactory.CreateDbContext())
+            {
+                var events = await dbContext.Events.Take(count).OrderBy(p => p.Time).ToArrayAsync();
+                return events;
+            }
+        }
+        public async Task RequestDeleteSensor(string MAC)
+        {
+            await _wyzeDongle.DeleteSensorAsync(MAC);
+        }
+
 
         public WyzeDongleState GetDongleState()
         {

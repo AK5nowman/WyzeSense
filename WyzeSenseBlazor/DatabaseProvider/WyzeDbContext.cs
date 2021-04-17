@@ -11,7 +11,7 @@ namespace WyzeSenseBlazor.DatabaseProvider
 {
     public class WyzeDbContext : DbContext
     {
-        public WyzeDbContext(DbContextOptionsBuilder options) : base(options.Options) { }
+        public WyzeDbContext(DbContextOptions options) : base(options) { }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

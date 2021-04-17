@@ -54,7 +54,7 @@ namespace WyzeSenseApp
                         string mac = line.Split(' ')[1];
                         if (mac.Length != 8) { Console.WriteLine("Invalid MAC"); break; }
 
-                        dongle.DeleteSensor(mac);
+                        dongle.DeleteSensorAsync(mac);
 
                         break;
                     default:

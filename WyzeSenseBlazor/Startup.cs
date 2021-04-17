@@ -34,12 +34,12 @@ namespace WyzeSenseBlazor
 
             string dbPath = Configuration.GetSection("Database")["Path"];
 
-            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(dbPath));
+            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(string.Format($"Data Source={dbPath}")));
 
-            //TODO: Add HostedService Iface
 
             services.AddSingleton<IWyzeDongle, WyzeDongle>();
-            services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
+            services.AddHostedService<WyzeSenseService>();
+            //services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
 
         }
 

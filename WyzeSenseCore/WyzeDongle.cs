@@ -46,11 +46,11 @@ namespace WyzeSenseCore
         private ILogger _logger;
         
 
-        public WyzeDongle( ILogger logger)
+        public WyzeDongle( ILogger<WyzeDongle> logger)
         {
+            _logger = logger;
             sensors = new();
             dongleState = new();
-            dataProcessor = new(dongleTokenSource.Token, dongleTokenSource.Token);
             dataBuffer = new(0x80, MaxCapacity: 1024);
         }
         public void Dispose()
@@ -84,8 +84,9 @@ namespace WyzeSenseCore
             if (dongleRead == null || dongleWrite == null) throw new Exception("Device Not open");
 
             dongleTokenSource =  CancellationTokenSource.CreateLinkedTokenSource(dongleTokenSource.Token, cancellationToken);
+
+            dataProcessor = new(dongleTokenSource.Token, dongleTokenSource.Token);
             dongleScanTokenSource = new();
-            
             _logger.LogInformation($"[Dongle][StartAsync] Opening USB Device {donglePath}");
 
             _logger.LogDebug("[Dongle][StartAsync] USB Device opened");
@@ -150,7 +151,7 @@ namespace WyzeSenseCore
             _logger.LogDebug($"[Dongle][RequestRefreshSensorListAsync] Sending Sensor Count Request");
             await this.WriteCommandAsync(BasePacket.RequestSensorCount());
         }
-        public async void DeleteSensor(string MAC)
+        public async Task DeleteSensorAsync(string MAC)
         {
             _logger.LogDebug($"[Dongle][DeleteSensor] Issuing sensor delete: {MAC}");
             await WriteCommandAsync(BasePacket.DeleteSensor(MAC));
@@ -201,7 +202,6 @@ namespace WyzeSenseCore
                         else
                         {
                             _logger.LogDebug($"[Dongle][UsbProcessingAsync] Incomplete packet received {dataBuffer.Size}/{dataLen + headerBuffer.Length - 1}");
-                            _logger.LogDebug()
                             break;
                         }
                     }
