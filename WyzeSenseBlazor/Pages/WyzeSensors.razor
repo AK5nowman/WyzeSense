@@ -1,6 +1,6 @@
 ﻿@page "/wyzesensors"
 
-@using WyzeSenseBlazor.Data
+@using WyzeSenseBlazor.DataServices
 @using WyzeSenseCore
 @using AntDesign
 @using WyzeSenseBlazor.DatabaseProvider.Models
@@ -9,7 +9,7 @@
 <h3>Wyze</h3>
 @if (dongle == null)
 {
-<Spin />
+    <Spin />
 }
 else
 {
@@ -49,45 +49,45 @@ else
 
 @if (sensorCollection == null)
 {
-<Spin />
+    <Spin />
 }
 else
 {
 
     <Table Title="Sensors" TItem="WyzeSensorModel" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=> record.Data.Events.Count() > 0)">
-        <RowTemplate>
-            <Column @bind-Field="@context.MAC" />
-            @if (context.LastActive == DateTime.MinValue)
+        <RowTemplate Context="sensorContext">
+            <Column @bind-Field="@sensorContext.MAC" />
+            @if (sensorContext.LastActive == DateTime.MinValue)
             {
-                <Column @bind-Field="@context.LastActive" >-</Column>
+                <Column @bind-Field="@sensorContext.LastActive">-</Column>
             }
             else
             {
-                <Column @bind-Field="@context.LastActive" />
+                <Column @bind-Field="@sensorContext.LastActive" />
             }
             <ActionColumn>
-                <Popconfirm Title="Sure to delete?" OnConfirm="()=>OnSensorDelete(context.MAC)" OkText="Yes" CancelText="No">
+                <Popconfirm Title="Sure to delete?" OnConfirm="()=>OnSensorDelete(sensorContext.MAC)" OkText="Yes" CancelText="No">
                     <Button Type="primary" Icon="delete" Size="small" Danger />
                 </Popconfirm>
             </ActionColumn>
         </RowTemplate>
         <ExpandTemplate>
-            <Table TItem="WyzeEventModel" DataSource="@context.Data.Events" order>
-                <RowTemplate Context="eventContext">
-                    <Column @bind-Field="@eventContext.Time" />
-                    <Column @bind-Field="@eventContext.State">
-                        @{ 
-                            var color = eventContext.State ? "green" : "red";
-                            <Tag Color="@color">@context.Data.SensorType.States.Single(p => p.State == eventContext.State).Type</Tag>
-                        }
-                    </Column>
-                    <Column @bind-Field="@context.Data.SensorType.States.Single(p=> p.State == eventContext.State).Type" />
-                    <Column @bind-Field="@eventContext.EventType.Type" />
-                    <Column @bind-Field="@eventContext.Battery" />
-                    <Column @bind-Field="@eventContext.Signal" />
-                    <Column @bind-Field="@eventContext.EventId" />
-                </RowTemplate>
-            </Table>
+    <Table Title="Events" TItem="WyzeEventModel" DataSource="@context.Data.Events">
+        <RowTemplate Context="eventContext">
+            <Column @bind-Field="@eventContext.Time" />
+            <Column Title="Type" TData="string">@eventContext.EventType.Type</Column>
+            <Column Title="State" TData="string">
+                @{  
+                    var color = eventContext.State.Abnormal ? "red" : "green";
+                    <Tag Color="@color">@eventContext.State.Type</Tag>
+                    }
+            </Column>
+            <Column @bind-Field="@eventContext.Battery" />
+            <Column @bind-Field="@eventContext.Signal" />
+            <Column @bind-Field="@eventContext.EventId" />
+        </RowTemplate>
+    </Table>
+
         </ExpandTemplate>
     </Table>
 }
@@ -119,7 +119,7 @@ else
         foreach (var sensor in sensors)
         {
             sensorCollection.TryAdd(sensor.MAC, sensor);
-            
+
         }
 
     }
@@ -135,7 +135,10 @@ else
     }
     private async void OnSensorAlarm(object sender, WyzeEventModel wyzeEvent)
     {
-
+        if (sensorCollection.TryGetValue(wyzeEvent.Sensor.MAC, out var sensor))
+        {
+            sensor.Events.Add(wyzeEvent);
+        }
         await InvokeAsync(this.StateHasChanged);
     }
 

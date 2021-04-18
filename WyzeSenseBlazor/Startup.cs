@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WyzeSenseBlazor.Data;
+using WyzeSenseBlazor.DataServices;
 using WyzeSenseCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +39,8 @@ namespace WyzeSenseBlazor
 
             services.AddSingleton<IWyzeDongle, WyzeDongle>();
             services.AddHostedService<WyzeSenseService>();
-            //services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
+            services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
+            services.AddScoped<ISensorTypeService, SensorTypeService>();
 
         }
 

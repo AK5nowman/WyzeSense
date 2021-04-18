@@ -17,8 +17,8 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
         public string SensorMAC { get; set; }
         //FKey
         public int EventTypeId { get; set; }
-
-        public bool State { get; set; }
+        //FKey
+        public int StateId { get; set; }
         public int EventId { get; set; }
         public int Battery { get; set; }
         public int Signal { get; set; }
@@ -26,6 +26,7 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
 
 
         //Navigation
+        public WyzeSensorStateModel State { get; set; }
         public WyzeSensorModel Sensor { get; set; }
         public WyzeEventTypeModel EventType { get; set; }
     }

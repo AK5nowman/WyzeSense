@@ -25,12 +25,12 @@ namespace WyzeSenseBlazor.DatabaseProvider
             };
             var sensorStates = new WyzeSensorStateModel[]
             {
-                new WyzeSensorStateModel{ Id = 1, SensorTypeId = sensorTypes[0].Id, State = true, Type = "Open" },
-                new WyzeSensorStateModel{ Id = 2, SensorTypeId = sensorTypes[0].Id, State = false, Type = "Closed" },
-                new WyzeSensorStateModel{ Id = 3, SensorTypeId = sensorTypes[1].Id, State = true, Type = "Active" },
-                new WyzeSensorStateModel{ Id = 4, SensorTypeId = sensorTypes[1].Id, State = false, Type = "Inactive" },
-                new WyzeSensorStateModel{ Id = 5, SensorTypeId = sensorTypes[2].Id, State = true, Type = "Wet" },
-                new WyzeSensorStateModel{ Id = 6, SensorTypeId = sensorTypes[2].Id, State = false, Type = "Dry" }
+                new WyzeSensorStateModel{ Id = 1, SensorTypeId = sensorTypes[0].Id, Abnormal = true, State = true, Type = "Open" },
+                new WyzeSensorStateModel{ Id = 2, SensorTypeId = sensorTypes[0].Id, Abnormal = false, State = false, Type = "Closed" },
+                new WyzeSensorStateModel{ Id = 3, SensorTypeId = sensorTypes[1].Id, Abnormal = true, State = true, Type = "Active" },
+                new WyzeSensorStateModel{ Id = 4, SensorTypeId = sensorTypes[1].Id, Abnormal = false, State = false, Type = "Inactive" },
+                new WyzeSensorStateModel{ Id = 5, SensorTypeId = sensorTypes[2].Id, Abnormal = true, State = true, Type = "Wet" },
+                new WyzeSensorStateModel{ Id = 6, SensorTypeId = sensorTypes[2].Id, Abnormal = false, State = false, Type = "Dry" }
             };
             var eventTypes = new WyzeEventTypeModel[]
             {
@@ -42,6 +42,7 @@ namespace WyzeSenseBlazor.DatabaseProvider
             modelBuilder.Entity<WyzeEventTypeModel>().HasData(eventTypes);
             #endregion
 
+            
             #region Filler Data
             Random rand = new Random(DateTime.Now.Millisecond);
 
@@ -57,14 +58,14 @@ namespace WyzeSenseBlazor.DatabaseProvider
             int startID = 1000;
             var eventFiller = new WyzeEventModel[]
             {
-                new WyzeEventModel { Id = 1, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 2, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 3, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 4, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 5, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 6, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 7, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
-                new WyzeEventModel { Id = 8, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, State = bools[rand.Next(0, 2)], Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 1, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 2, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 3, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 4, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 5, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 6, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 7, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
+                new WyzeEventModel { Id = 8, SensorMAC=sensorFiller[rand.Next(0, 4)].MAC, EventTypeId = eventTypes[rand.Next(0,2)].Id, StateId = rand.Next(1, 7), Battery = rand.Next(0, 100), EventId = startID++, Signal = rand.Next(20, 70), Time = DateTime.Now.AddMinutes(rand.Next(-100, 0)) },
             };
 
             var configFiller = new ConfigurationModel[]
@@ -79,6 +80,7 @@ namespace WyzeSenseBlazor.DatabaseProvider
             modelBuilder.Entity<WyzeEventModel>().HasData(eventFiller);
             modelBuilder.Entity<ConfigurationModel>().HasData(configFiller);
             #endregion
+            
 
             base.OnModelCreating(modelBuilder);
         }

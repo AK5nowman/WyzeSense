@@ -12,9 +12,9 @@ using WyzeSenseBlazor.DatabaseProvider.Models;
 using WyzeSenseCore;
 using System.Threading.Channels;
 
-namespace WyzeSenseBlazor.Data
+namespace WyzeSenseBlazor.DataServices
 {
-    public class WyzeSenseService : IWyzeSenseService, IHostedService
+    public class WyzeSenseService : BackgroundService, IWyzeSenseService
     {
         private readonly ILogger _logger;
         private readonly WyzeSenseCore.IWyzeDongle _wyzeDongle;
@@ -61,8 +61,7 @@ namespace WyzeSenseBlazor.Data
 
         public bool Running { get=> running; }
         private bool running = false;
-
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -88,7 +87,8 @@ namespace WyzeSenseBlazor.Data
                 running = false;
             }
         }
-        public Task StopAsync(CancellationToken cancellationToken)
+
+        public override Task StopAsync(CancellationToken cancellationToken)
         {
             _wyzeDongle.Stop();
             return Task.CompletedTask;
@@ -109,7 +109,10 @@ namespace WyzeSenseBlazor.Data
                 //Lets load up related data
                 //TODO: Explore different options
                 var sensorModel = await GetOrCreateSensor(e.MAC, (int)e.Sensor);
-                var eventTypeModel = await dbContext.EventTypes.SingleAsync(et => et.Id == (int)e.EventType);
+                var eventTypeModel = await dbContext.EventTypes
+                    .Where(p => p.Id == (int)e.EventType).FirstOrDefaultAsync();
+                var stateModel = await dbContext.SensorStates
+                    .Where(p => p.SensorType == sensorModel.SensorType && p.State == e.State).FirstOrDefaultAsync();
 
 
 
@@ -126,7 +129,6 @@ namespace WyzeSenseBlazor.Data
 
                 var eventdbModel = new WyzeEventModel()
                 {
-                    State = e.State,
                     EventId = e.EventNumber,
                     Battery = e.BatteryLevel,
                     Signal = e.SignalStrength,
@@ -134,8 +136,10 @@ namespace WyzeSenseBlazor.Data
                 };
                 eventdbModel.EventType = eventTypeModel;
                 eventdbModel.Sensor = sensorModel;
+                eventdbModel.State = stateModel;
                 eventdbModel.Sensor.LastActive = e.ServerTime;
 
+                await dbContext.Events.AddAsync(eventdbModel);
                 await dbContext.SaveChangesAsync();
 
                 OnSensorAlarm?.Invoke(this, eventdbModel);
@@ -147,26 +151,19 @@ namespace WyzeSenseBlazor.Data
 
             using (var dbContext = _dbContextFactory.CreateDbContext())
             {
-                var sensorModel = await dbContext.Sensors.SingleAsync(s => s.MAC == e.MAC);
-                if(sensorModel != null)
+                dbContext.Sensors.Remove(new WyzeSensorModel()
                 {
-                    dbContext.Sensors.Remove(sensorModel);
-                    //TODO:Verify this deletes events and not model type
-                    await dbContext.SaveChangesAsync();
-                }
-                OnRemoveSensor?.Invoke(this, sensorModel.MAC);
+                    MAC = e.MAC
+                });
+                //TODO:Verify this deletes events and not model type
+                await dbContext.SaveChangesAsync();
+                OnRemoveSensor?.Invoke(this, e.MAC);
             }
         }
         
         private async void _wyzeDongle_OnAddSensor(object sender, WyzeSensor e)
         {
-
             var sensorModel = await GetOrCreateSensor(e.MAC, (int)e.Type);
-            using (var dbContext = _dbContextFactory.CreateDbContext())
-            {
-                await dbContext.Sensors.AddAsync(sensorModel);
-                await dbContext.SaveChangesAsync();
-            }
             OnAddSensor?.Invoke(this, sensorModel);
         }
 
@@ -174,7 +171,10 @@ namespace WyzeSenseBlazor.Data
         {
             using (var dbContext = _dbContextFactory.CreateDbContext())
             {
-                var sensorModel = await dbContext.Sensors.SingleAsync(s => s.MAC == MAC);
+                var sensorModel = await dbContext.Sensors
+                    .Include(p => p.SensorType)
+                    .Where(p => p.MAC == MAC)
+                    .FirstOrDefaultAsync();
 
                 if (sensorModel == null)
                 {
@@ -187,8 +187,7 @@ namespace WyzeSenseBlazor.Data
                         Description = "",
                         LastActive = DateTime.Now,
                     };
-
-                    var sensorType = await dbContext.SensorTypes.SingleAsync(st => st.Id == SensorType);
+                    var sensorType = sensorModel.SensorType;
                     if (sensorType == null)
                     {
                         _logger.LogInformation($"Creating a new sensor type: {SensorType}");
@@ -205,8 +204,9 @@ namespace WyzeSenseBlazor.Data
                         };
                         sensorType = newSensorModel;
                     }
-
                     sensorModel.SensorType = sensorType;
+                    await dbContext.Sensors.AddAsync(sensorModel);
+                    await dbContext.SaveChangesAsync();
                 }
 
                 return sensorModel;
@@ -249,19 +249,36 @@ namespace WyzeSenseBlazor.Data
         {
             using (var dbContext = _dbContextFactory.CreateDbContext())
             {
-                return await dbContext.Sensors
+                var query = dbContext.Sensors
                     .Include(p => p.Events)
                         .ThenInclude(p => p.EventType)
-                    .Include(p => p.SensorType)
-                        .ThenInclude(p => p.States)
-                    .ToArrayAsync();
+                    .Include(p => p.Events)
+                        .ThenInclude(p => p.State)
+                    .Include(p => p.SensorType);
+                _logger.LogInformation(query.ToQueryString());
+                return await query.ToArrayAsync();
             }
         }
-        public async Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC, int count)
+        public async Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC = null, int? count = null, int? page = null)
         {
             using (var dbContext = _dbContextFactory.CreateDbContext())
             {
-                var events = await dbContext.Events.Take(count).OrderBy(p => p.Time).ToArrayAsync();
+                IQueryable<WyzeEventModel> query = dbContext.Events
+                    .Include(p => p.EventType)
+                    .Include(p => p.State);
+
+                if (!string.IsNullOrEmpty(MAC))
+                    query = query.Where(p => p.SensorMAC == MAC);
+
+                query = query.OrderByDescending(p => p.Time);
+
+                if (page != null && count != null)
+                    query = query.Skip(page.Value * count.Value);
+
+                if (count != null)
+                    query = query.Take(count.Value);
+
+                var events = await query.ToArrayAsync();
                 return events;
             }
         }
@@ -275,5 +292,7 @@ namespace WyzeSenseBlazor.Data
         {
             return _wyzeDongle.GetDongleState();
         }
+
+
     }
 }

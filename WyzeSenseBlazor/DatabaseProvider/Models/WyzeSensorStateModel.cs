@@ -15,6 +15,7 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
         public int Id { get; set; }
 
         public bool State { get; set; }
+        public bool Abnormal { get; set; }
 
         [MaxLength(16)]
         public string Type { get; set; }

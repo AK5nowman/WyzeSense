@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using WyzeSenseCore;
 using WyzeSenseBlazor.DatabaseProvider.Models;
 
-namespace WyzeSenseBlazor.Data
+namespace WyzeSenseBlazor.DataServices
 {
     interface IWyzeSenseService 
     {
@@ -25,7 +25,7 @@ namespace WyzeSenseBlazor.Data
         Task RequestDeleteSensor(string MAC);
         void RequestRefreshSensorListAsync();
         Task<WyzeSensorModel[]> GetSensorAsync();
-        Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC, int count);
+        Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC = null, int? count = null, int? page = null);
         WyzeDongleState GetDongleState();
     }
 }

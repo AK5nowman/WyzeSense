@@ -81,9 +81,11 @@ namespace WyzeSenseCore
         }
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            _logger.LogInformation("Starting Dongle");
+
             if (dongleRead == null || dongleWrite == null) throw new Exception("Device Not open");
 
-            dongleTokenSource =  CancellationTokenSource.CreateLinkedTokenSource(dongleTokenSource.Token, cancellationToken);
+            dongleTokenSource =  CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             dataProcessor = new(dongleTokenSource.Token, dongleTokenSource.Token);
             dongleScanTokenSource = new();
@@ -452,7 +454,7 @@ namespace WyzeSenseCore
                 case Command.CommandIDs.GetSensorListResp:
                     _logger.LogDebug($"[Dongle][commandCallback] GetSensorResp");
                     WyzeSensor sensor = new WyzeSensor(Data);
-                    tempScanSensors.Add(sensor.MAC, sensor);
+                    tempScanSensors.TryAdd(sensor.MAC, sensor);
                     actualSensorCount++;
                     if (actualSensorCount == expectedSensorCount)
                         refreshSensors();
