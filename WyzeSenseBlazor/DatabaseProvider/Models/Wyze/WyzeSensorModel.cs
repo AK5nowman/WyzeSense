@@ -22,6 +22,7 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
 
         //Relation
         public List<WyzeEventModel> Events { get; set; } = new();
+        public List<Topics> Topics { get; set; }
 
     }
 }

@@ -1,0 +1,96 @@
+﻿@page "/MQTTTemplates"
+
+@using WyzeSenseBlazor.DataServices
+@using WyzeSenseCore
+@using AntDesign
+@inject IMQTTTemplateService templateService;
+
+<h3>Templates</h3>
+
+<Table TItem="DatabaseProvider.Models.Template" DataSource="@templates" PageSize="@pageSize">
+    <RowTemplate>
+        <Column @bind-Field="@context.Name" />
+        <Column Title="EventType" TData=string>
+            @context.EventType.Type
+        </Column>
+        <Column Title="Sensor Type" TData=string>
+            @context.SensorType.Type
+        </Column>
+    </RowTemplate>
+    <ExpandTemplate>
+        <Table TItem="DatabaseProvider.Models.PayloadPackage" DataSource="@context.Data.PayloadPackages">
+            <RowTemplate Context="packageContext">
+                <Column @bind-Field="@packageContext.Topic" />
+            </RowTemplate>
+            <ExpandTemplate Context="packageContext">
+                <Table TItem="DatabaseProvider.Models.Payload" DataSource="@packageContext.Data.Payloads">
+                    <RowTemplate Context="payloadContext">
+                        <Column @bind-Field="@payloadContext.Name" />
+                        <Column @bind-Field="@payloadContext.Property" />
+                    </RowTemplate>
+                    <FooterTemplate>
+                                <Input Placeholder="Name" @bind-Value="@newPropName" />
+                                <Select DataSource="@_properties"
+                                        @bind-Value="@newProperty"
+                                        ValueName="@nameof(Item.value)"
+                                        LabelName="@nameof(Item.name)"
+                                        Placeholder="Property" />
+                    </FooterTemplate>
+                </Table>
+            </ExpandTemplate>
+        </Table>
+    </ExpandTemplate>
+</Table>
+
+<style>
+    .editable-cell {
+        position: relative;
+    }
+
+    .editable-cell-value-wrap {
+        padding: 5px 12px;
+        cursor: pointer;
+    }
+
+    .editable-row:hover .editable-cell-value-wrap {
+        padding: 4px 11px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+    }
+
+    [data-theme='dark'] .editable-row:hover .editable-cell-value-wrap {
+        border: 1px solid #434343;
+    }
+</style>
+@code {
+    int editSensorModelId;
+    int editStateModelId;
+    string newProperty;
+    string newPropName;
+
+    List<DatabaseProvider.Models.Template> templates;
+    internal class Item
+    {
+        public string name { get; set; }
+        public string value { get; set; }
+    }
+    List<Item> _properties = new List<Item>()
+    {
+        new Item { name = "Battery", value = "Battery"},
+        new Item { name = "Signal", value = "Signal"},
+        new Item { name = "State", value = "State"},
+        new Item { name = "Time", value = "Time"}
+
+    };
+
+    public int pageSize { get; set; } = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        templates = new();
+        templates.AddRange(await templateService.GetTemplatesAsync());
+
+    }
+
+
+}

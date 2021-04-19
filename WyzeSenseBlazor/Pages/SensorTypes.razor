@@ -10,7 +10,6 @@
 
 <Table TItem="WyzeSensorTypeModel" DataSource="@sensorTypes" PageSize="@pageSize" RowClassName="@(_=>"editable-row")">
     <RowTemplate>
-        <Column @bind-Field="@context.Id" />
         <Column DataIndex="@nameof(context.Type)" TData="string">
             @if (editSensorModelId == context.Id)
             {
@@ -28,7 +27,7 @@
         <Table TItem="WyzeSensorStateModel" DataSource="@context.Data.States" RowClassName="@(_=>"editable-row")">
             <RowTemplate Context="stateContext">
                 <Column @bind-Field="@stateContext.State" />
-                <Column DataIndex="@nameof(stateContext.Type)" TData="string">
+                <Column Width="30%" DataIndex="@nameof(stateContext.Type)" TData="string">
                     @if (editStateModelId == stateContext.Id)
                     {
                         <Input Type="text" @bind-Value="stateContext.Type" OnBlur="() => stopStateEdit(stateContext)" AutoFocus />

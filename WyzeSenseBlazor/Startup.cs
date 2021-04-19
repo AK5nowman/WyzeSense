@@ -41,7 +41,9 @@ namespace WyzeSenseBlazor
             services.AddHostedService<WyzeSenseService>();
             services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
             services.AddScoped<ISensorTypeService, SensorTypeService>();
-
+            services.AddScoped<IConfigService, ConfigService>();
+            services.AddScoped<IEventTypeService, EventTypeService>();
+            services.AddScoped<IMQTTTemplateService, MQTTTemplateService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

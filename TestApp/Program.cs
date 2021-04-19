@@ -15,11 +15,10 @@ namespace TestApp
     {
         static void Main(string[] args)
         {
-            if (File.Exists("wyzesensor.db"))
-                File.Delete("wyzesensor.db");
-                var options = new DbContextOptionsBuilder().UseSqlite("Data Source=wyzesensor.db");
+            var options = new DbContextOptionsBuilder().UseSqlite("Data Source=wyzesensor.db");
             using (var db = new WyzeDbContext( options.Options))
             {
+                db.Database.EnsureDeleted();
                 db.Database.EnsureCreated();
                 Console.WriteLine("getting events");
                 var events = db.Events
