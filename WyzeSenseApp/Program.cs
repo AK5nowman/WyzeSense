@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace WyzeSenseApp
 {
@@ -9,8 +10,10 @@ namespace WyzeSenseApp
     {
         static async Task Main(string[] args)
         {
-            ILogger logger;
-            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(logger);
+            var loggingFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
+            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(loggingFactory.CreateLogger<WyzeSenseCore.WyzeDongle>());
+            dongle.OpenDevice(args[0]);
             dongle.OnSensorAlarm += Dongle_OnSensorAlarm;
             dongle.OnAddSensor += Dongle_OnAddSensor;
             dongle.OnRemoveSensor += Dongle_OnRemoveSensor;
@@ -56,6 +59,9 @@ namespace WyzeSenseApp
 
                         dongle.DeleteSensorAsync(mac);
 
+                        break;
+                    case "cc1310up":
+                        dongle.RequestCC1310Update();
                         break;
                     default:
                         Console.WriteLine("Type 'q' to exit");

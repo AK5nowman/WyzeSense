@@ -158,6 +158,11 @@ namespace WyzeSenseCore
             _logger.LogDebug($"[Dongle][DeleteSensor] Issuing sensor delete: {MAC}");
             await WriteCommandAsync(BasePacket.DeleteSensor(MAC));
         }
+        public async Task RequestCC1310Update()
+        {
+            _logger.LogDebug($"[Dongle][RequestCC1310Update] Asking to upgrade cc1310.");
+            await WriteCommandAsync(BasePacket.UpdateCC1310());
+        }
         private async Task UsbProcessingAsync()
         {
             _logger.LogInformation("[Dongle][UsbProcessingAsync] Beginning to process USB data");
@@ -335,10 +340,10 @@ namespace WyzeSenseCore
                     //byte 31 is version?
 
                     //TODO: Do I need to store this key, what is it's purpose. The data doesn't appear to be encrypted - maybe a future update?
-                    if (isSuccess == 1)
-                        _logger.LogDebug($"[Dongle][dataReceived] Random Date Resp: {rmac} Random: {rand}");
-                    else
+                    if (isSuccess < 0 || isSuccess > 0xC)
                         _logger.LogError($"[Dongle][dataReceived] Random Date Seed Failed for : {rmac}");
+                    else
+                        _logger.LogDebug($"[Dongle][dataReceived] Random Date Resp: {rmac} Random: {rand}");
 
                     _logger.LogInformation($"[Dongle][dataReceived] Verifying Sensor: {lastAddedSensorMAC}");
 
@@ -381,6 +386,7 @@ namespace WyzeSenseCore
                 case Command.CommandIDs.RequestMACResp:
                 case Command.CommandIDs.GetSensorCountResp:
                 case Command.CommandIDs.GetSensorListResp:
+                case Command.CommandIDs.UpdateCC1310Resp:
                     this.commandCallback(Data);
                     break;
                 default:
@@ -444,6 +450,9 @@ namespace WyzeSenseCore
             Command.CommandIDs cmdID = (Command.CommandIDs)Data[4];
             switch (cmdID)
             {
+                case Command.CommandIDs.UpdateCC1310Resp:
+                    _logger.LogError($"[Dongle][commandCallback] READY TO START CC1310 UPGRADE");
+                    break;
                 case Command.CommandIDs.GetSensorCountResp:
                     expectedSensorCount = Data[5];
                     _logger.LogDebug($"[Dongle][commandCallback] There are {expectedSensorCount} sensor bound to this dongle");

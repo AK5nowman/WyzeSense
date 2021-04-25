@@ -25,6 +25,7 @@ namespace WyzeSenseCore
             RequestKey = 0x06,
             SetCh554Update = 0x0E,
             UpdateCC1310 = 0x12,
+            UpdateCC1310Resp = 0x13,
             FinishAuth = 0x14,
             AuthResp = 0x15,
             RequestDongleVersion = 0x16,
@@ -51,7 +52,11 @@ namespace WyzeSenseCore
             SetLED = 0x3d,
             SetLEDResp = 0x3e,
             Ack = 0xFF
+            //HMS 
+            /*
+            GetBatteryVolt = 0x57
 
+            */
         }
 
         public readonly byte CommandType;
