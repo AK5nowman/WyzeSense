@@ -85,6 +85,8 @@ namespace WyzeSenseCore
 
             if (dongleRead == null || dongleWrite == null) throw new Exception("Device Not open");
 
+
+            
             dongleTokenSource =  CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             dataProcessor = new(dongleTokenSource.Token, dongleTokenSource.Token);
@@ -94,7 +96,7 @@ namespace WyzeSenseCore
             _logger.LogDebug("[Dongle][StartAsync] USB Device opened");
 
             Task process = UsbProcessingAsync();
-            
+                        
             _logger.LogInformation("[Dongle][StartAsync] Requesting Device Type");
             await this.WriteCommandAsync(BasePacket.RequestDeviceType());
 
@@ -114,10 +116,9 @@ namespace WyzeSenseCore
             _logger.LogInformation("[Dongle][StartAsync] Finishing Auth");
             await this.WriteCommandAsync(BasePacket.FinishAuth());
 
-            //Request Sensor List
+            //Request Sensor Li
             RequestRefreshSensorListAsync();
 
-            await process;
         }
         public async void SetLedAsync(bool On)
         {
@@ -452,6 +453,7 @@ namespace WyzeSenseCore
             {
                 case Command.CommandIDs.UpdateCC1310Resp:
                     _logger.LogError($"[Dongle][commandCallback] READY TO START CC1310 UPGRADE");
+                    //TODO: Add new Long task and await it. 
                     break;
                 case Command.CommandIDs.GetSensorCountResp:
                     expectedSensorCount = Data[5];
