@@ -42,11 +42,13 @@ namespace WyzeSenseCore
         public event EventHandler<WyzeSensor> OnRemoveSensor;
         public event EventHandler<WyzeSenseEvent> OnSensorAlarm;
         public event EventHandler<WyzeDongleState> OnDongleStateChange;
+        public event EventHandler<WyzeKeyPadEvent> OnKeyPadEvent;
+        public event EventHandler<WyzeKeyPadPin> OnKeyPadPin;
 
         private ILogger _logger;
         
 
-        public WyzeDongle( ILogger<WyzeDongle> logger)
+        public WyzeDongle( ILogger logger)
         {
             _logger = logger;
             sensors = new();
@@ -175,19 +177,20 @@ namespace WyzeSenseCore
                 {
                     while (dataBuffer.Peek(headerBuffer.Span))
                     {
-                        _logger.LogInformation($"[Dongle][UsbProcessingAsync] dataBuffer contains enough bytes for header {dataBuffer.Size}");
+                        _logger.LogTrace($"[Dongle][UsbProcessingAsync] dataBuffer contains enough bytes for header {dataBuffer.Size}");
                         ushort magic = BitConverter.ToUInt16(headerBuffer.Slice(0, 2).Span);
                         if (magic != 0xAA55)
                         {
                             _logger.LogError($"[Dongle][UsbProcessingAsync] Unexpected header bytes {magic:X4}");
                             dataBuffer.Burn(1);
+                            continue;
                         }
                         if (headerBuffer.Span[4] == 0xff)//If this is the ack packet
                         {
                             dataBuffer.Burn(7);
                             //Acknowledge the command that we sent. Do we need to track which packet was last sent and verify?
                             this.waitHandle.Set();
-                            _logger.LogInformation($"[Dongle][UsbProcessingAsync] Received dongle ack packet for {headerBuffer.Span[3]} burning 7 bytes, {dataBuffer.Size} remain");
+                            _logger.LogTrace($"[Dongle][UsbProcessingAsync] Received dongle ack packet for {headerBuffer.Span[3]} burning 7 bytes, {dataBuffer.Size} remain");
                             continue;
                         }
 
@@ -203,7 +206,7 @@ namespace WyzeSenseCore
                             if (dataPack.Span[2] == (byte)Command.CommandTypes.TYPE_ASYNC)
                             {
                                 await this.WriteAsync(BasePacket.AckPacket(dataPack.Span[4]));
-                                _logger.LogInformation($"[Dongle][UsbProcessingAsync] Acknowledging packet type 0x{dataPack.Span[4]:X2}");
+                                _logger.LogTrace($"[Dongle][UsbProcessingAsync] Acknowledging packet type 0x{dataPack.Span[4]:X2}");
                             }
                             dataReceived(dataPack.Span);
                         }
@@ -214,7 +217,7 @@ namespace WyzeSenseCore
                         }
                     }
 
-                    _logger.LogInformation("[Dongle][UsbProcessingAsync] Preparing to receive bytes");
+                    _logger.LogTrace("[Dongle][UsbProcessingAsync] Preparing to receive bytes");
                     int result = -1;
                     try
                     {
@@ -233,9 +236,9 @@ namespace WyzeSenseCore
                     }
                     else if (result >= 0)
                     {
-                        _logger.LogInformation($"[Dongle][UsbProcessingAsync] {dataReadBuffer.Span[0]} Bytes Read Raw:  {DataToString(dataReadBuffer.Slice(1, dataReadBuffer.Span[0]).Span)}");
+                        _logger.LogTrace($"[Dongle][UsbProcessingAsync] {dataReadBuffer.Span[0]} Bytes Read Raw:  {DataToString(dataReadBuffer.Slice(1, dataReadBuffer.Span[0]).Span)}");
                         dataBuffer.Queue(dataReadBuffer.Slice(1, dataReadBuffer.Span[0]).Span);
-                        _logger.LogInformation("[Dongle][UsbProcessingAsync] Finished processing received bytes");
+                        _logger.LogTrace("[Dongle][UsbProcessingAsync] Finished processing received bytes");
 
                     }
                 }
@@ -268,7 +271,7 @@ namespace WyzeSenseCore
             {
                 await dongleWrite.WriteAsync(preppedData, 0, preppedData.Length);
                 await dongleWrite.FlushAsync();
-                _logger.LogInformation($"[Dongle][WriteAsync] Successfully wrote {preppedData.Length} bytes: {DataToString(preppedData)}");
+                _logger.LogTrace($"[Dongle][WriteAsync] Successfully wrote {preppedData.Length} bytes: {DataToString(preppedData)}");
             }
             catch (Exception e)
             {
@@ -388,7 +391,10 @@ namespace WyzeSenseCore
                 case Command.CommandIDs.GetSensorCountResp:
                 case Command.CommandIDs.GetSensorListResp:
                 case Command.CommandIDs.UpdateCC1310Resp:
-                    this.commandCallback(Data);
+                    this.commandCallbackReceived(Data);
+                    break;
+                case Command.CommandIDs.KeyPadEvent:
+                    keypadDataReceived(Data.Slice(5));
                     break;
                 default:
                     _logger.LogDebug($"[Dongle][dataReceived] Data handler not assigned {(Command.CommandIDs)Data[4]} (Hex={string.Format("{0:X2}", Data[4])})\r\n\t{DataToString(Data)}");
@@ -444,7 +450,7 @@ namespace WyzeSenseCore
                     break;
             }
         }
-        private void commandCallback(ReadOnlySpan<byte> Data)
+        private void commandCallbackReceived(ReadOnlySpan<byte> Data)
         {
             _logger.LogInformation("[Dongle][commandCallback] Receiving command response");
 
@@ -518,7 +524,37 @@ namespace WyzeSenseCore
             }
 
         }
+        private void keypadDataReceived(ReadOnlySpan<byte> Data)
+        {
+            byte eventType = Data[0]; //Used to send P1301 or P1302 to wyze server. No idea.
+            string MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(1, 8));
+            var var1 = Data[0xA];
+            var var2 = Data[0xe];
+            var var3 = Data[var1 + 0xB]; //P1303 - battery?
+            var var4 = Data[0xB];
+            var var5 = Data[0xC];//P1304 - signal?
+            var var6 = Data[0xD];
 
+            switch (Data[0xE])
+            {
+                case 2:
+                case 0xA:
+                    WyzeKeyPadEvent kpEvent = new(Data);
+                    _logger.LogInformation($"[Dongle][KeypadDataReceived] KeyPadEvent - {kpEvent}");
+                    break;
+                case 6:
+                    _logger.LogWarning($"[Dongle][KeypadDataReceived] Keypad({MAC}) Request Profile status - is it requesting a response??");
+                    break;
+                case 8:
+                    WyzeKeyPadPin pinEvent = new(Data);
+                    _logger.LogInformation($"[Dongle][KeypadDataReceived] Pin - {pinEvent}");
+                    break;
+                case 0xC:
+                    _logger.LogInformation($"[Dongle][KeypadDataReceived] Keypad({MAC}) Some sort of alarm event?");
+                    break;
+                default: break;
+            }
+        }
         public Task<WyzeSensor[]> GetSensorAsync()
         {
             return Task.FromResult(sensors.Select(index => index.Value).ToArray());

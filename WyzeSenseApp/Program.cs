@@ -10,9 +10,10 @@ namespace WyzeSenseApp
     {
         static async Task Main(string[] args)
         {
-            var loggingFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            ILogger mylogger = new WyzeSenseApp.Logger();
+            //
 
-            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(loggingFactory.CreateLogger<WyzeSenseCore.WyzeDongle>());
+            WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(mylogger);
             dongle.OpenDevice(args[0]);
             dongle.OnSensorAlarm += Dongle_OnSensorAlarm;
             dongle.OnAddSensor += Dongle_OnAddSensor;

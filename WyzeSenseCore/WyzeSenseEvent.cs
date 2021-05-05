@@ -66,13 +66,13 @@ namespace WyzeSenseCore
             //TODO: Figure out formatting
             DongleTime = DateTime.Now;// new DateTime(BinaryPrimitives.ReadInt64LittleEndian(Data.Slice(5, 8)));
             ServerTime = DateTime.Now;
-            EventType = (WyzeEventType)Data[13];
-            MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(14, 8));
-            Sensor = (WyzeSensorType)Data[22];
-            BatteryLevel = Data[24];
-            State = Data[27] == 1 ? true : false;
-            EventNumber = BinaryPrimitives.ReadUInt16BigEndian(Data.Slice(28, 2));
-            SignalStrength = Data[30];
+            EventType = (WyzeEventType)Data[13];//0xD - 0x8
+            MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(14, 8));//0xE - 0x9
+            Sensor = (WyzeSensorType)Data[22];//0x16 - 0x11
+            BatteryLevel = Data[24];//0X18 - 0x13 - P1303
+            State = Data[27] == 1 ? true : false;//0x1B - 0x16
+            EventNumber = BinaryPrimitives.ReadUInt16BigEndian(Data.Slice(28, 2));//0x1C - 0x17
+            SignalStrength = Data[30];//0x1E - 0x19 - P1304
             RawData = new Memory<byte>(Data.ToArray());
 
         }

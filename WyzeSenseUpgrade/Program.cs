@@ -2,6 +2,8 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Buffers.Binary;
+using System.Collections.Generic;
+
 namespace WyzeSenseUpgrade
 {
     class Program
@@ -17,137 +19,177 @@ namespace WyzeSenseUpgrade
 
         static async Task Main(string[] args)
         {
-            using (dongleStream = new FileStream(args[0], FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, true))
+            List<string> argList = new List<string>(args);
+            if (args.Length > 0)
             {
-                Console.WriteLine("Requesting Upgrade Mode ");
-                Memory<byte> requestcc13010Up = new byte[] { 0x07, 0xAA, 0x55, 0x43, 0x03, 0x12, 0x01, 0x57 };
-                dongleStream.Write(requestcc13010Up.Span);
-
-                Memory<byte> buffer = new byte[0x10];
-                int readSize = await dongleStream.ReadAsync(buffer);
-
-                Console.WriteLine($"Read raw data: {DataToString(buffer.Span)}");
-                buffer = buffer.Slice(1, buffer.Span[0]);
-                Console.WriteLine($"Read data: {DataToString(buffer.Span)}");
-
-                ////Boot mode??
-                //await sendCmd(0, new byte[0]);
-                //var bootResp = await getCmdResponse();
-                //Console.WriteLine($"boot resp = ({bootResp.Item1}, {bootResp.Item2})");
-
-                //Auto Baud
-                Console.WriteLine($"Requesting Auto Baud");
-                Memory<byte> requestBootMode = new byte[] { 0x55, 0x55 };
-                dongleStream.Write(requestBootMode.Span);
-
-                var resp = await getCmdResponse();
-                Console.WriteLine($"auto baud resp = ({resp.Item1}, {resp.Item2})");
-
-
-                //Testing Ping
-                Console.WriteLine($"Requesting Ping");
-                Memory<byte> requestPing = new byte[] { 0x03, 0x20, 0x20 };
-                dongleStream.Write(requestPing.Span);
-                resp = await getCmdResponse();
-                Console.WriteLine($"Ping resp = ({resp.Item1}, {resp.Item2})");
-
-                //Get Device ID
-                Console.WriteLine($"Requesting Chip ID");
-                Memory<byte> resqID = new byte[] { 0x03, 0x28, 0x28 };
-                dongleStream.Write(resqID.Span);
-                resp = await getCmdResponse();
-                Console.WriteLine($"Chip ID resp = ({resp.Item1}, {resp.Item2})");
-                if (resp.Item2)
+                if (File.Exists(args[0]))
                 {
-                    var cmdRespData = await getCmdResponseData(resp.Item3);
-                    if (cmdRespData.Item1)
+                    using (dongleStream = new FileStream(args[0], FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, true))
                     {
-                        Console.WriteLine($"Raw Chip ID: {DataToString(cmdRespData.Item2.Span)}");
-                        DeviceID = BinaryPrimitives.ReadUInt32BigEndian(cmdRespData.Item2.Span);
-                        DeviceVersion = (uint)((DeviceID >> 0x1C) < 2 ? 1 : 2);
-                        Console.WriteLine($"Chip ID: {DeviceID:X4} Version: {DeviceVersion}");
-                        sendCmdAck(true);
+                        Console.WriteLine("Requesting Upgrade Mode ");
+                        Memory<byte> requestcc13010Up = new byte[] { 0x07, 0xAA, 0x55, 0x43, 0x03, 0x12, 0x01, 0x57 };
+                        dongleStream.Write(requestcc13010Up.Span);
+
+                        Memory<byte> buffer = new byte[0x10];
+                        int readSize = await dongleStream.ReadAsync(buffer);
+
+                        Console.WriteLine($"Read raw data: {DataToString(buffer.Span)}");
+                        buffer = buffer.Slice(1, buffer.Span[0]);
+                        Console.WriteLine($"Read data: {DataToString(buffer.Span)}");
+
+                        ////Something about verifying connection
+                        //await sendCmd(0, new byte[0]);
+                        //var bootResp = await getCmdResponse();
+                        //Console.WriteLine($"boot resp = ({bootResp.Item1}, {bootResp.Item2})");
+
+                        //Auto Baud
+                        Console.WriteLine($"Requesting Auto Baud");
+                        Memory<byte> requestBootMode = new byte[] { 0x55, 0x55 };
+                        dongleStream.Write(requestBootMode.Span);
+
+                        var resp = await getCmdResponse();
+                        Console.WriteLine($"auto baud resp = ({resp.Item1}, {resp.Item2})");
+
+
+                        //Testing Ping
+                        Console.WriteLine($"Requesting Ping");
+                        Memory<byte> requestPing = new byte[] { 0x03, 0x20, 0x20 };
+                        dongleStream.Write(requestPing.Span);
+                        resp = await getCmdResponse();
+                        Console.WriteLine($"Ping resp = ({resp.Item1}, {resp.Item2})");
+
+                        //Get Device ID
+                        Console.WriteLine($"Requesting Chip ID");
+                        Memory<byte> resqID = new byte[] { 0x03, 0x28, 0x28 };
+                        dongleStream.Write(resqID.Span);
+                        resp = await getCmdResponse();
+                        Console.WriteLine($"Chip ID resp = ({resp.Item1}, {resp.Item2})");
+                        if (resp.Item2)
+                        {
+                            var cmdRespData = await getCmdResponseData(resp.Item3);
+                            if (cmdRespData.Item1)
+                            {
+                                Console.WriteLine($"Raw Chip ID: {DataToString(cmdRespData.Item2.Span)}");
+                                DeviceID = BinaryPrimitives.ReadUInt32BigEndian(cmdRespData.Item2.Span);
+                                DeviceVersion = (uint)((DeviceID >> 0x1C) < 2 ? 1 : 2);
+                                Console.WriteLine($"Chip ID: {DeviceID:X4} Version: {DeviceVersion}");
+                                sendCmdAck(true);
+                            }
+                            else
+                                sendCmdAck(false);
+                        }
+                        else
+                            sendCmdAck(false);
+
+                        //Get Flash Size
+                        Console.WriteLine("Requesting RAM Size");
+                        var ramResp = await readMemory32(0x40082250, 1);
+
+
+                        //Get Flash Size
+                        Console.WriteLine("Requesting Flash Size");
+                        var flashResp = await readMemory32(0x4003002c, 1);
+
+                        Console.WriteLine("Requesting Device ID");
+                        var ipDeviceID = await readMemory32(0x50001318, 1);
+
+                        //DUMP FLASH FIRMWARE
+                        string rwResp;
+                        while (true)
+                        {
+                            Console.WriteLine("Read or Write? <r,w, exit>");
+                            rwResp = Console.ReadLine();
+                            rwResp = rwResp.ToLower();
+                            if (rwResp == "w" || rwResp == "r")
+                                break;
+                            if (rwResp == "exit")
+                                return;
+                        }
+
+                        if (rwResp == "r")
+                        {
+
+                            Console.WriteLine("Output name:");
+                            string outputPath = Console.ReadLine();
+
+                            var flashMem = await readMemory32(0x0, 32768); //32768 * 4 = size of firmware file pulled from my v2 came (and the HMS).
+                            Console.WriteLine("Recv all Flash");
+
+                            using (var writer = new BinaryWriter(File.OpenWrite(outputPath)))
+                            {
+                                writer.Write(flashMem.Item2.ToArray());
+                            }
+                            Console.WriteLine("File saved");
+
+                        }
+                        else if (rwResp == "w")
+                        {
+                            string firmwarefile;
+                            while (true)
+                            {
+                                Console.WriteLine("Firmare file?:");
+                                firmwarefile = Console.ReadLine();
+                                if (File.Exists(firmwarefile))
+                                    break;
+                                Console.WriteLine("Firmware file not found");
+                            }
+
+                            Console.WriteLine("***********************");
+                            Console.WriteLine("***STARTING TO FLASH***");
+                            Memory<byte> newFirmware = new Memory<byte>(File.ReadAllBytes(firmwarefile));
+
+                            (bool, uint) chipCrc32;
+                            uint crc32File = calcCRC32LikeChip(newFirmware.Span);
+                            Console.WriteLine($"File CRC32 (Len: {newFirmware.Length})= {crc32File:X4}");
+
+                            if (await eraseFlash(0x0, (uint)newFirmware.Length))
+                            {
+                                if (await writeFlashRange(0x0, newFirmware))
+                                {
+
+                                    Console.WriteLine("Requesting PostDownload CRC32");
+                                    chipCrc32 = await getCRC32(0x0, 32768 * 4);
+                                    if (chipCrc32.Item1)
+                                        Console.WriteLine($"PostDownload CRC32 = {chipCrc32.Item2:X4}");
+                                    else
+                                        Console.WriteLine("Failed to get PostDownload crc32");
+
+                                    Console.WriteLine("*********************");
+                                    Console.WriteLine("***Reseting Device***");
+                                    Console.WriteLine("*********************");
+                                    await cmdReset();
+                                }
+                                else
+                                {
+                                    Console.WriteLine("####Failed to download firmware####");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("####Failed to erase flash####");
+                            }
+
+                            Console.WriteLine("Requesting CRC32");
+                            chipCrc32 = await getCRC32(0x0, 32768 * 4);
+                            if (chipCrc32.Item1)
+                                Console.WriteLine($"CRC32 = {chipCrc32.Item2:X4}");
+                            else
+                                Console.WriteLine("Failed to get crc32");
+
+                            ////CRC Calc isn't correct. Need to address.
+                            //Console.WriteLine("Testing File CRC32 Calc");
+                            //Memory<byte> fileBytes = new Memory<byte>(File.ReadAllBytes(@"mycc1310dump.bin"));
+                            //uint crc32File = calcCRC32LikeChip(fileBytes.Span);
+                            //Console.WriteLine($"File CRC32 (Len: {fileBytes.Length})= {crc32File:X4}");
+                        }
+
                     }
-                    else
-                        sendCmdAck(false);
                 }
                 else
-                    sendCmdAck(false);
-
-                //Get Flash Size
-                Console.WriteLine("Requesting RAM Size");
-                var ramResp = await readMemory32(0x40082250, 1);
-
-
-                //Get Flash Size
-                Console.WriteLine("Requesting Flash Size");
-                var flashResp = await readMemory32(0x4003002c, 1);
-
-                Console.WriteLine("Requesting Device ID");
-                var ipDeviceID = await readMemory32(0x50001318, 1);
-
-
-                //DUMP FLASH FIRMWARE
-                //var flashMem = await readMemory32(0x0, 32768);
-                //Console.WriteLine("Recv all Flash");
-
-                //using (var writer = new BinaryWriter(File.OpenWrite(@"mycc1310dump.bin")))
-                //{
-                //    writer.Write(flashMem.Item2.ToArray());
-                //}
-                //Console.WriteLine("File saved");
-                
-
-                Console.WriteLine("Requesting CRC32");
-                var crc32Resp = await getCRC32(0x0, 32768 * 4);
-                if (crc32Resp.Item1)
-                    Console.WriteLine($"CRC32 = {crc32Resp.Item2:X4}");
-                else
-                    Console.WriteLine("Failed to get crc32");
-
-                ////CRC Calc isn't correct. Need to address.
-                //Console.WriteLine("Testing File CRC32 Calc");
-                //Memory<byte> fileBytes = new Memory<byte>(File.ReadAllBytes(@"mycc1310dump.bin"));
-                //uint crc32File = calcCRC32LikeChip(fileBytes.Span);
-                //Console.WriteLine($"File CRC32 (Len: {fileBytes.Length})= {crc32File:X4}");
-
-
-
-
-                //Console.WriteLine("***********************");
-                //Console.WriteLine("***STARTING TO FLASH***");
-                //Memory<byte> newFirmware = new Memory<byte>(File.ReadAllBytes(@"hms_cc1310.bin"));
-                //crc32File = calcCRC32LikeChip(newFirmware.Span);
-                //Console.WriteLine($"File CRC32 (Len: {newFirmware.Length})= {crc32File:X4}");
-               
-                //if (await eraseFlash(0x0, (uint)newFirmware.Length))
-                //{
-                //    if (await writeFlashRange(0x0, newFirmware))
-                //    {
-
-                //        Console.WriteLine("Requesting PostDownload CRC32");
-                //        crc32Resp = await getCRC32(0x0, 32768 * 4);
-                //        if (crc32Resp.Item1)
-                //            Console.WriteLine($"PostDownload CRC32 = {crc32Resp.Item2:X4}");
-                //        else
-                //            Console.WriteLine("Failed to get PostDownload crc32");
-
-                //        Console.WriteLine("*********************");
-                //        Console.WriteLine("***Reseting Device***");
-                //        Console.WriteLine("*********************");
-                //        await cmdReset();
-                //    }
-                //    else
-                //    {
-                //        Console.WriteLine("####Failed to download firmware####");
-                //    }
-                //}
-                //else
-                //{
-                //    Console.WriteLine("####Failed to erase flash####");
-                //}
-
+                    Console.WriteLine($"Device doesn't exist at path: {args[0]}");
             }
+            else
+                Console.WriteLine($"No device path supplied './WyzeSenseUpgrade [device path]");
         }
         private static async Task<bool> cmdReset()
         {

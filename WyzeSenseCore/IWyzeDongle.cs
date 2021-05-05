@@ -13,6 +13,8 @@ namespace WyzeSenseCore
         event EventHandler<WyzeSensor> OnRemoveSensor;
         event EventHandler<WyzeSenseEvent> OnSensorAlarm;
         event EventHandler<WyzeDongleState> OnDongleStateChange;
+        event EventHandler<WyzeKeyPadEvent> OnKeyPadEvent;
+        event EventHandler<WyzeKeyPadPin> OnKeyPadPin;
 
         void Stop(); 
         bool OpenDevice(string devicePath);

@@ -51,6 +51,9 @@ namespace WyzeSenseCore
             Unk1 = 0x37,//Is this missed alarms?
             SetLED = 0x3d,
             SetLEDResp = 0x3e,
+            SendKeypadEvent = 0x53,
+            KeyPadEvent = 0x55,
+
             Ack = 0xFF
             //HMS 
             /*
@@ -67,7 +70,7 @@ namespace WyzeSenseCore
             this.CommandType = (byte)CommandType;
             this.CommandID = (byte)CommandID;
         }
-
+        public static Command CMD_SEND_KP_EVENT => new Command(CommandTypes.TYPE_ASYNC, CommandIDs.SendKeypadEvent);
         public static Command CMD_GET_ENR => new Command(CommandTypes.TYPE_SYNC, CommandIDs.RequestEnr);
         public static Command CMD_GET_MAC => new Command(CommandTypes.TYPE_SYNC, CommandIDs.RequestMAC);
         public static Command CMD_GET_KEY => new Command(CommandTypes.TYPE_SYNC, CommandIDs.RequestKey);
@@ -181,6 +184,41 @@ namespace WyzeSenseCore
         public static BasePacket SyncTimeAck() => new ByteArrayPacket(Command.NOTIFY_SYNC_TIME, BitConverter.GetBytes(DateTime.UtcNow.Ticks));
         public static BasePacket SetLightOn() => new BytePacket(Command.CMD_SET_LIGHT, 0xff);
         public static BasePacket SetLightOff() => new BytePacket(Command.CMD_SET_LIGHT, 0);
+    }
+    internal class KeyPadEventPacket : BasePacket
+    {
+        public byte Status { get; set; }
+        public KeyPadEventPacket(Command Cmd, byte KeyPadStatus) : base(Cmd)
+        {
+            Status = KeyPadStatus;
+        }
+        public override byte[] Encode()
+        {
+            var mybuf = new byte[0x13]
+            {
+                0xAA,//hdr
+                0x55,//hdr
+                0x53, //Pkt type
+                0xf, //len
+                0x53,//Cmd Id
+                0,//43
+                0,//42
+                0,//41
+                0,//40
+                0,//3F
+                0,//3E
+                0,//3D
+                0,//3C - going to be lsbyte of *&(param1+5)//unknown
+                0xE9,//3B 
+                0x02,//3A
+                0x09,//39
+                0,//38 - State code? 1=disarm; 2=activehome; 3=activeaway; 4=inactive; 5=?
+                0,//37 checksum
+                0 //36 checksum
+            };
+
+            return base.Encode();
+        }
     }
     internal class BytePacket : BasePacket
     {
