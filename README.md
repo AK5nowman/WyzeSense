@@ -1,5 +1,6 @@
 # WyzeSense
 Hobby Project to interface with Wyze V1 and V2 sensors/Keypad using the V1 Bridge. It may not be pretty but that is why know one is paying me for it :)
+Note: tested on ubuntu 20.04
 
 ------
 #### WyzeSenseCore
