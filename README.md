@@ -25,5 +25,5 @@ Console application to test WyzeSenseCore functionality
 ------
 #### WyzesenseBlazor
 
-Test project to bridge Wyze Sense to MQTT in a Blazor server app. Dipping my toes into some web dev. 
+Test project to bridge Wyze Sense to MQTT in a Blazor server app. Dipping my toes into some web dev. Still a work in progress
 
