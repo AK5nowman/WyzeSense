@@ -14,6 +14,7 @@ namespace WyzeSenseCore
         public int SignalStrength;
         public string Pin;
         public ReadOnlyMemory<byte> RawData;
+        public WyzeSensorType Sensor;
 
         public WyzeKeyPadPin(ReadOnlySpan<byte> Data)
         {
@@ -24,6 +25,7 @@ namespace WyzeSenseCore
             SignalStrength = Data[Data[0xA] + 0xB];
             BatteryLevel = Data[0xC];
             ServerTime = DateTime.Now;
+            Sensor = (WyzeSensorType)Data[14];
 
             ReadOnlySpan<byte> pinRaw = Data.Slice(0xF, Data[0xA] - 6);
             Pin = "";

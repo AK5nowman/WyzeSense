@@ -51,7 +51,9 @@ namespace WyzeSenseBlazor.DataServices
             _wyzeDongle.OnRemoveSensor += _wyzeDongle_OnRemoveSensor;
             _wyzeDongle.OnSensorAlarm += _wyzeDongle_OnSensorAlarm;
             _wyzeDongle.OnDongleStateChange += _wyzeDongle_OnDongleStateChange;
+            _wyzeDongle.OnKeyPadEvent += _wyzeDongle_OnKeyPadEvent;
         }
+
 
         public event EventHandler<WyzeSensorModel> OnAddSensor;
         public event EventHandler<string> OnRemoveSensor;
@@ -98,6 +100,51 @@ namespace WyzeSenseBlazor.DataServices
         {
             dongleState = e;
             this.OnDongleStateChange?.Invoke(this, e);
+        }
+        private async void _wyzeDongle_OnKeyPadEvent(object sender, WyzeKeyPadEvent e)
+        {
+            //using (var dbContext = _dbContextFactory.CreateDbContext())
+            //{
+
+
+            //    //Lets load up related data
+            //    //TODO: Explore different options
+            //    var sensorModel = await GetOrCreateSensor(e.MAC, (int)e.Sensor);
+            //    var eventTypeModel = await dbContext.EventTypes
+            //        .Where(p => p.Id == (int)e.EventType).FirstOrDefaultAsync();
+            //    var stateModel = await dbContext.SensorStates
+            //        .Where(p => p.SensorType == sensorModel.SensorType && p.State ==(int)e.State).FirstOrDefaultAsync();
+
+
+
+            //    if (eventTypeModel == null)
+            //    {
+            //        eventTypeModel = new WyzeEventTypeModel()
+            //        {
+            //            Id = (int)e.EventType,
+            //            Type = "Unknown"
+            //        };
+            //        //TODO: Do i need this call?
+            //        //await dbContext.EventTypes.AddAsync(eventTypeModel);
+            //    }
+
+            //    var eventdbModel = new WyzeEventModel()
+            //    {
+            //        EventId = e.EventNumber,
+            //        Battery = e.BatteryLevel,
+            //        Signal = e.SignalStrength,
+            //        Time = e.ServerTime,
+            //    };
+            //    eventdbModel.EventType = eventTypeModel;
+            //    eventdbModel.Sensor = sensorModel;
+            //    eventdbModel.State = stateModel;
+            //    eventdbModel.Sensor.LastActive = e.ServerTime;
+
+            //    await dbContext.Events.AddAsync(eventdbModel);
+            //    await dbContext.SaveChangesAsync();
+
+            //    OnSensorAlarm?.Invoke(this, eventdbModel);
+            //}
         }
 
         private async void _wyzeDongle_OnSensorAlarm(object sender, WyzeSenseEvent e)
@@ -198,8 +245,8 @@ namespace WyzeSenseBlazor.DataServices
                             Type = "Unknown",
                             States = new List<WyzeSensorStateModel>()
                             {
-                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = true, Type = "One" },
-                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = false, Type = "Zero" },
+                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = 1, Type = "One" },
+                                new WyzeSensorStateModel{ SensorTypeId = SensorType, State = 0, Type = "Zero" },
                             }
                         };
                         sensorType = newSensorModel;

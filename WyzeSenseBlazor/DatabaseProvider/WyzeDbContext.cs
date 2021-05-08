@@ -25,12 +25,12 @@ namespace WyzeSenseBlazor.DatabaseProvider
             };
             var sensorStates = new WyzeSensorStateModel[]
             {
-                new WyzeSensorStateModel{ Id = 1, SensorTypeId = sensorTypes[0].Id, Abnormal = true, State = true, Type = "Open" },
-                new WyzeSensorStateModel{ Id = 2, SensorTypeId = sensorTypes[0].Id, Abnormal = false, State = false, Type = "Closed" },
-                new WyzeSensorStateModel{ Id = 3, SensorTypeId = sensorTypes[1].Id, Abnormal = true, State = true, Type = "Active" },
-                new WyzeSensorStateModel{ Id = 4, SensorTypeId = sensorTypes[1].Id, Abnormal = false, State = false, Type = "Inactive" },
-                new WyzeSensorStateModel{ Id = 5, SensorTypeId = sensorTypes[2].Id, Abnormal = true, State = true, Type = "Wet" },
-                new WyzeSensorStateModel{ Id = 6, SensorTypeId = sensorTypes[2].Id, Abnormal = false, State = false, Type = "Dry" }
+                new WyzeSensorStateModel{ Id = 1, SensorTypeId = sensorTypes[0].Id, Abnormal = true, State = 1, Type = "Open" },
+                new WyzeSensorStateModel{ Id = 2, SensorTypeId = sensorTypes[0].Id, Abnormal = false, State = 0, Type = "Closed" },
+                new WyzeSensorStateModel{ Id = 3, SensorTypeId = sensorTypes[1].Id, Abnormal = true, State = 1, Type = "Active" },
+                new WyzeSensorStateModel{ Id = 4, SensorTypeId = sensorTypes[1].Id, Abnormal = false, State = 0, Type = "Inactive" },
+                new WyzeSensorStateModel{ Id = 5, SensorTypeId = sensorTypes[2].Id, Abnormal = true, State = 1, Type = "Wet" },
+                new WyzeSensorStateModel{ Id = 6, SensorTypeId = sensorTypes[2].Id, Abnormal = false, State = 0, Type = "Dry" }
             };
             var eventTypes = new WyzeEventTypeModel[]
             {

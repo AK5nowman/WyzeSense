@@ -25,6 +25,7 @@ namespace WyzeSenseCore
         public int SignalStrength;
         public ReadOnlyMemory<byte> RawData;
         public WyzeKeyPadState State;
+        public WyzeSensorType Sensor;
 
         public WyzeKeyPadEvent(ReadOnlySpan<byte> Data)
         {
@@ -33,7 +34,8 @@ namespace WyzeSenseCore
             SignalStrength = Data[Data[0xA] + 0xB];
             BatteryLevel = Data[0xC];
             ServerTime = DateTime.Now;
-            
+            Sensor = (WyzeSensorType)Data[14];
+
             State = (WyzeKeyPadState)(Data[0xF] + (Data[0xE] == 0x2 ? 1 : 0)); // Add one if its a button press, otherwise motion.
         }
         public override string ToString()

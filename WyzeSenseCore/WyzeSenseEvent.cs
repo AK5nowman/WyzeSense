@@ -12,6 +12,7 @@ namespace WyzeSenseCore
         Switch = 0x01,
         Motion = 0x02,
         Water = 0x03,
+        KeyPad = 0x05,
         Unknown
     }
     public enum WyzeSensorState
@@ -37,7 +38,7 @@ namespace WyzeSenseCore
         public DateTime DongleTime;
         public DateTime ServerTime;
         public WyzeSensorType Sensor;
-        public bool State;
+        public int State;
         public WyzeEventType EventType;
         public ushort EventNumber;
         public int BatteryLevel;
@@ -48,11 +49,11 @@ namespace WyzeSenseCore
         {
             return Sensor switch
             {
-                WyzeSensorType.Motion => State ? WyzeSensorState.Active : WyzeSensorState.Inactive,
-                WyzeSensorType.Switch => State ? WyzeSensorState.Open : WyzeSensorState.Closed,
-                WyzeSensorType.Water => State ? WyzeSensorState.Wet : WyzeSensorState.Dry,
-                WyzeSensorType.Unknown => State ? WyzeSensorState.One : WyzeSensorState.Zero,
-                _ => State ? WyzeSensorState.One : WyzeSensorState.Zero
+                WyzeSensorType.Motion => State == 1 ? WyzeSensorState.Active : WyzeSensorState.Inactive,
+                WyzeSensorType.Switch => State == 1 ? WyzeSensorState.Open : WyzeSensorState.Closed,
+                WyzeSensorType.Water => State == 1 ? WyzeSensorState.Wet : WyzeSensorState.Dry,
+                WyzeSensorType.Unknown => State == 1 ? WyzeSensorState.One : WyzeSensorState.Zero,
+                _ => State == 1 ? WyzeSensorState.One : WyzeSensorState.Zero
             };
             
         }
@@ -70,7 +71,7 @@ namespace WyzeSenseCore
             MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(14, 8));//0xE - 0x9
             Sensor = (WyzeSensorType)Data[22];//0x16 - 0x11
             BatteryLevel = Data[24];//0X18 - 0x13 - P1303
-            State = Data[27] == 1 ? true : false;//0x1B - 0x16
+            State = Data[27];//0x1B - 0x16
             EventNumber = BinaryPrimitives.ReadUInt16BigEndian(Data.Slice(28, 2));//0x1C - 0x17
             SignalStrength = Data[30];//0x1E - 0x19 - P1304
             RawData = new Memory<byte>(Data.ToArray());

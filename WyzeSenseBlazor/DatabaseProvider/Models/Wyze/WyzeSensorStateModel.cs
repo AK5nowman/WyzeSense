@@ -14,7 +14,7 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        public bool State { get; set; }
+        public int State { get; set; }
         public bool Abnormal { get; set; }
 
         [MaxLength(16)]
