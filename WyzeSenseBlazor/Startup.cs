@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using WyzeSenseBlazor.DataServices;
 using WyzeSenseCore;
 using Microsoft.EntityFrameworkCore;
+using WyzeSenseBlazor.Settings;
 
 namespace WyzeSenseBlazor
 {
@@ -20,9 +21,30 @@ namespace WyzeSenseBlazor
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            MapConfiguration();
+        }
+        public IConfiguration Configuration { get; }
+
+        private void MapConfiguration()
+        {
+            BrokerHostSettings brokerHostSettings = new();
+            Configuration.GetSection(nameof(BrokerHostSettings)).Bind(brokerHostSettings);
+            AppSettingsProvider.BrokerHostSettings = brokerHostSettings;
+
+            ClientSettings clientSettings = new();
+            Configuration.GetSection(nameof(ClientSettings)).Bind(clientSettings);
+            AppSettingsProvider.ClientSettings = clientSettings;
+
+            WyzeSettings wyzeSettings = new();
+            Configuration.GetSection(nameof(WyzeSettings)).Bind(wyzeSettings);
+            AppSettingsProvider.WyzeSettings = wyzeSettings;
+            Console.WriteLine("Dongle path: " + wyzeSettings.UsbPath);
+
+            DatabaseSettings databaseSettings = new();
+            Configuration.GetSection(nameof(DatabaseSettings)).Bind(databaseSettings);
+            AppSettingsProvider.DatabaseSettings = databaseSettings;
         }
 
-        public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -31,18 +53,15 @@ namespace WyzeSenseBlazor
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddAntDesign();
+            services.AddMqttClientHostedService();
 
-            string dbPath = Configuration.GetSection("Database")["Path"];
+            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(string.Format($"Data Source={AppSettingsProvider.DatabaseSettings.DatabasePath}")));
 
-            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(string.Format($"Data Source={dbPath}")));
-
-
+            services.AddSingleton<IWyzeSenseLogger, WyzeLogger>();
             services.AddSingleton<IWyzeDongle, WyzeDongle>();
             services.AddHostedService<WyzeSenseService>();
             services.AddSingleton<IWyzeSenseService, WyzeSenseService>();
-            services.AddScoped<ISensorTypeService, SensorTypeService>();
-            services.AddScoped<IConfigService, ConfigService>();
-            services.AddScoped<IEventTypeService, EventTypeService>();
+
             services.AddScoped<IMQTTTemplateService, MQTTTemplateService>();
         }
 

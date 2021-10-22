@@ -12,7 +12,7 @@ namespace WyzeSenseBlazor.DataServices
     {
         private readonly ILogger _logger;
         private readonly IDbContextFactory<DatabaseProvider.WyzeDbContext> _dbContextFactory;
-        public MQTTTemplateService(ILogger<EventTypeService> logger, IDbContextFactory<DatabaseProvider.WyzeDbContext> dbContextFactory)
+        public MQTTTemplateService(ILogger<MQTTTemplateService> logger, IDbContextFactory<DatabaseProvider.WyzeDbContext> dbContextFactory)
         {
             _logger = logger;
             _dbContextFactory = dbContextFactory;
@@ -23,8 +23,6 @@ namespace WyzeSenseBlazor.DataServices
             using (var dbContext = _dbContextFactory.CreateDbContext())
             {
                 return await dbContext.Templates
-                    .Include(p => p.SensorType)
-                    .Include(p => p.EventType)
                     .Include(p => p.PayloadPackages)
                         .ThenInclude(p => p.Payloads)
                     .ToArrayAsync();

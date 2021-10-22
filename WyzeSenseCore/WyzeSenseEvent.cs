@@ -13,6 +13,9 @@ namespace WyzeSenseCore
         Motion = 0x02,
         Water = 0x03,
         KeyPad = 0x05,
+        Climate = 0x07,
+        SwitchV2 = 0x0E,
+        Motionv2 = 0x0F,
         Unknown
     }
     public enum WyzeSensorState
@@ -30,52 +33,24 @@ namespace WyzeSenseCore
     {
         Alarm = 0xA2,
         Status = 0xA1,
+        Climate = 0xE8,
+        UserAction = 0x99,
         Unknown
     }
     public sealed class WyzeSenseEvent
     {
-        public string MAC;
-        public DateTime DongleTime;
-        public DateTime ServerTime;
-        public WyzeSensorType Sensor;
-        public int State;
-        public WyzeEventType EventType;
-        public ushort EventNumber;
-        public int BatteryLevel;
-        public int SignalStrength;
-        public ReadOnlyMemory<byte> RawData;
+        public WyzeSensor Sensor;
 
-        public WyzeSensorState GetState()
-        {
-            return Sensor switch
-            {
-                WyzeSensorType.Motion => State == 1 ? WyzeSensorState.Active : WyzeSensorState.Inactive,
-                WyzeSensorType.Switch => State == 1 ? WyzeSensorState.Open : WyzeSensorState.Closed,
-                WyzeSensorType.Water => State == 1 ? WyzeSensorState.Wet : WyzeSensorState.Dry,
-                WyzeSensorType.Unknown => State == 1 ? WyzeSensorState.One : WyzeSensorState.Zero,
-                _ => State == 1 ? WyzeSensorState.One : WyzeSensorState.Zero
-            };
-            
-        }
+        public DateTime ServerTime;
+
+        public WyzeEventType EventType;
+
+        public Dictionary<string, object> Data;
+
         public override string ToString()
         {
-            return string.Format("{0} - {1}: {2} EventNum: {3} Battery: {4}", MAC, Sensor, State, EventNumber, BatteryLevel);
-        }
-        public WyzeSenseEvent(ReadOnlySpan<byte> Data)
-        {
-
-            //TODO: Figure out formatting
-            DongleTime = DateTime.Now;// new DateTime(BinaryPrimitives.ReadInt64LittleEndian(Data.Slice(5, 8)));
-            ServerTime = DateTime.Now;
-            EventType = (WyzeEventType)Data[13];//0xD - 0x8
-            MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(14, 8));//0xE - 0x9
-            Sensor = (WyzeSensorType)Data[22];//0x16 - 0x11
-            BatteryLevel = Data[24];//0X18 - 0x13 - P1303
-            State = Data[27];//0x1B - 0x16
-            EventNumber = BinaryPrimitives.ReadUInt16BigEndian(Data.Slice(28, 2));//0x1C - 0x17
-            SignalStrength = Data[30];//0x1E - 0x19 - P1304
-            RawData = new Memory<byte>(Data.ToArray());
-
+            return string.Format("{0} - {1}: {2}", Sensor.MAC, ServerTime, Sensor.Type);
         }
     }
+
 }

@@ -40,15 +40,14 @@ namespace WyzeSenseCore
 
         public event EventHandler<WyzeSensor> OnAddSensor;
         public event EventHandler<WyzeSensor> OnRemoveSensor;
-        public event EventHandler<WyzeSenseEvent> OnSensorAlarm;
+        public event EventHandler<WyzeSenseEvent> OnSensorEvent;
         public event EventHandler<WyzeDongleState> OnDongleStateChange;
-        public event EventHandler<WyzeKeyPadEvent> OnKeyPadEvent;
         public event EventHandler<WyzeKeyPadPin> OnKeyPadPin;
 
-        private ILogger _logger;
+        private IWyzeSenseLogger _logger;
         
 
-        public WyzeDongle( ILogger logger)
+        public WyzeDongle( IWyzeSenseLogger logger)
         {
             _logger = logger;
             sensors = new();
@@ -118,8 +117,8 @@ namespace WyzeSenseCore
             _logger.LogInformation("[Dongle][StartAsync] Finishing Auth");
             await this.WriteCommandAsync(BasePacket.FinishAuth());
 
-            //Request Sensor Li
-            RequestRefreshSensorListAsync();
+            //Request Sensor List
+            await RequestRefreshSensorListAsync();
 
         }
         public async void SetLedAsync(bool On)
@@ -131,7 +130,7 @@ namespace WyzeSenseCore
             else
                 await this.WriteCommandAsync(BasePacket.SetLightOff());
         }
-        public async void StartScanAsync(int Timeout = 60 * 1000)
+        public async Task StartScanAsync(int Timeout = 60 * 1000)
         {
             _logger.LogDebug($"[Dongle][StartScanAsync] Starting Inclusion for {Timeout / 1000} seconds");
             await this.WriteCommandAsync(BasePacket.RequestEnableScan());
@@ -151,7 +150,7 @@ namespace WyzeSenseCore
             await this.WriteCommandAsync(BasePacket.RequestDisableScan());
             dongleScanTokenSource.Cancel();
         }
-        public async void RequestRefreshSensorListAsync()
+        public async Task RequestRefreshSensorListAsync()
         {
             _logger.LogDebug($"[Dongle][RequestRefreshSensorListAsync] Sending Sensor Count Request");
             await this.WriteCommandAsync(BasePacket.RequestSensorCount());
@@ -329,11 +328,12 @@ namespace WyzeSenseCore
                     byte type = Data[14];
                     byte version = Data[15];
                     _logger.LogDebug($"[Dongle][dataReceived] New Sensor: {mac} Type: {(WyzeSensorType)type} Version: {version}");
-                    lastAddedSensor = new WyzeSensor();
-                    lastAddedSensor.MAC = mac;
-                    lastAddedSensor.Type = (WyzeSensorType)type;
-                    lastAddedSensor.Version = version;
-
+                    lastAddedSensor = new WyzeSensor()
+                    {
+                        MAC = mac,
+                        Type = (WyzeSensorType)type,
+                        Version = version
+                    };
                     lastAddedSensorMAC = mac;
                     WriteCommandAsync(BasePacket.SetSensorRandomDate(mac)).FireAndForget();
                     break;
@@ -358,14 +358,59 @@ namespace WyzeSenseCore
                     eventReceived(Data.Slice(14));
                     break;
                 case Command.CommandIDs.NotifySensorAlarm:
-                    WyzeSenseEvent wyzeevent = new(Data);
-                    if (wyzeevent.EventType == WyzeEventType.Alarm)
+                    switch ((WyzeEventType)Data[0x0D])
                     {
-                        if (OnSensorAlarm != null)
-                            dataProcessor.Queue(() => OnSensorAlarm.Invoke(this,wyzeevent));
-                    }
-                    else
-                        _logger.LogDebug($"[Dongle][dataReceived] Unhandled SensorAlarm {wyzeevent.EventType}\r\n\t{DataToString(Data)}");
+                        case WyzeEventType.Alarm:
+                            var alarmEvent = new WyzeSenseEvent()
+                            {
+                                Sensor = getSensor(ASCIIEncoding.ASCII.GetString(Data.Slice(0x0E, 8)), (WyzeSensorType)Data[0x16]),
+                                ServerTime = DateTime.Now,
+                                EventType = WyzeEventType.Alarm,
+                                Data = new Dictionary<string, object>()
+                                {
+                                    { "Battery" , Data[0x18] },
+                                    { "Signal" , Data[0x1E] }
+                                }
+                            };
+                            _logger.LogTrace($"[Dongle][dataReceived] Sensor Type: {Data[0x16]}");
+                            if (alarmEvent.Sensor.Type == WyzeSensorType.Motion || alarmEvent.Sensor.Type == WyzeSensorType.Motionv2)
+                                alarmEvent.Data.Add("Motion", Data[0x1B]);
+                            else if (alarmEvent.Sensor.Type == WyzeSensorType.Switch || alarmEvent.Sensor.Type == WyzeSensorType.SwitchV2)
+                                alarmEvent.Data.Add("Contact", Data[0x1B]);
+                            else
+                                alarmEvent.Data.Add("State", Data[0x1B]);
+
+                            _logger.LogInformation($"[Dongle][dataReceived] NotifySensorAlarm - Alarm: {alarmEvent.ToString()}");
+                            if (OnSensorEvent != null)
+                                    dataProcessor.Queue(() => OnSensorEvent.Invoke(this, alarmEvent));
+
+
+                            break;
+                        case WyzeEventType.Climate:
+                            var tempEvent = new WyzeSenseEvent()
+                            {
+                                Sensor = getSensor(ASCIIEncoding.ASCII.GetString(Data.Slice(0x0E, 8)), WyzeSensorType.Climate),
+                                ServerTime = DateTime.Now,
+                                EventType = WyzeEventType.Status,
+                                Data = new Dictionary<string, object>()
+                                {
+                                    { "Temperature", Data[0x1B] },
+                                    { "Humidity", Data[0x1D] },
+                                    { "Battery" , Data[0x18] },
+                                    { "Signal" , Data[0x20] },
+                                }
+                            };
+                            _logger.LogInformation($"[Dongle][dataReceived] NotifySensorAlarm - Temp: {tempEvent.ToString()}");
+                            if (OnSensorEvent != null)
+                            {
+                                dataProcessor.Queue(() => OnSensorEvent.Invoke(this, tempEvent));
+                            }
+                            break;
+                        default:
+                            _logger.LogDebug($"[Dongle][dataReceived] Unhandled SensorAlarm {Data[0x0D]:X2}\r\n\t{DataToString(Data)}");
+                            break;
+
+                    }                         
                     break;
                 case Command.CommandIDs.RequestSyncTime:
                     _logger.LogDebug("[Dongle][dataReceived] Dongle is requesting time");
@@ -377,8 +422,7 @@ namespace WyzeSenseCore
                         _logger.LogDebug("[Dongle][dataReceived] Last Added  Sensor is null");
                         break;
                     }
-                    if (OnAddSensor != null)
-                        dataProcessor.Queue(() => OnAddSensor.Invoke(this, lastAddedSensor));
+                    dataProcessor.Queue(() => OnAddSensor.Invoke(this, lastAddedSensor));
                     break;
                 case Command.CommandIDs.StartStopScanResp:
                 case Command.CommandIDs.AuthResp:
@@ -459,7 +503,6 @@ namespace WyzeSenseCore
             {
                 case Command.CommandIDs.UpdateCC1310Resp:
                     _logger.LogError($"[Dongle][commandCallback] READY TO START CC1310 UPGRADE");
-                    //TODO: Add new Long task and await it. 
                     break;
                 case Command.CommandIDs.GetSensorCountResp:
                     expectedSensorCount = Data[5];
@@ -539,18 +582,61 @@ namespace WyzeSenseCore
             {
                 case 2:
                 case 0xA:
-                    WyzeKeyPadEvent kpEvent = new(Data);
-                    _logger.LogInformation($"[Dongle][KeypadDataReceived] KeyPadEvent - {kpEvent}");
+                    //WyzeKeyPadEvent kpEvent = new(Data);
+                    var keypadEvent = new WyzeSenseEvent()
+                    {
+                        Sensor = getSensor(MAC, WyzeSensorType.KeyPad),
+                        ServerTime = DateTime.Now,
+                        EventType = (Data[0x0E] == 0x02 ? WyzeEventType.UserAction : WyzeEventType.Alarm),
+                        Data = new Dictionary<string, object>()
+                        {
+
+                            { "Battery", Data[0x0C] },
+                            {  "Signal", Data[Data[0x0A] + 0x0B] }
+
+                        }
+                    };
+                    if (Data[0x0E] == 0x02)
+                        keypadEvent.Data.Add("Mode", Data[0x0F]);
+                    else
+                        keypadEvent.Data.Add("Motion", Data[0x0F]);
+
+                    _logger.LogInformation($"[Dongle][keypadDataReceived] KeypadEvent - {keypadEvent}");
+                    if (OnSensorEvent != null)
+                        dataProcessor.Queue(() => OnSensorEvent.Invoke(this, keypadEvent));
                     break;
                 case 6:
+                    //Received when you start entering keypad pin code.
                     _logger.LogWarning($"[Dongle][KeypadDataReceived] Keypad({MAC}) Request Profile status - is it requesting a response??");
                     break;
                 case 8:
                     WyzeKeyPadPin pinEvent = new(Data);
                     _logger.LogInformation($"[Dongle][KeypadDataReceived] Pin - {pinEvent}");
+                    if(OnKeyPadPin !=null)
+                        dataProcessor.Queue(() => OnKeyPadPin.Invoke(this, pinEvent));
                     break;
                 case 0xC:
                     _logger.LogInformation($"[Dongle][KeypadDataReceived] Keypad({MAC}) Some sort of alarm event?");
+                    break;
+                case 0x12:
+                    var dongleWaterEvent = new WyzeSenseEvent()
+                    {
+                        Sensor = getSensor(MAC, WyzeSensorType.Water),
+                        ServerTime = DateTime.Now,
+                        EventType = WyzeEventType.Alarm, //Alarm. Not sure if water sensors check in periodically.
+                        Data = new Dictionary<string, object>()
+                        {
+                            { "HasExtension", Data[0x11] },
+                            { "ExtensionWater", Data[0x10] },
+                            { "Water", Data[0x0F] },
+                            { "Battery" , Data[0x0C] },//Not confident
+                            { "Signal" , Data[0x14] }
+                        }
+                    };
+                    _logger.LogInformation($"[Dongle][keypadDataReceived] WaterEvent -: {dongleWaterEvent}");
+                    if (OnSensorEvent != null)
+                        dataProcessor.Queue(() => OnSensorEvent.Invoke(this, dongleWaterEvent));
+
                     break;
                 default: break;
             }
@@ -564,7 +650,16 @@ namespace WyzeSenseCore
         {
             return this.dongleState;
         }
-
+        private WyzeSensor getSensor(string MAC, WyzeSensorType Type)
+        {
+            if (sensors.TryGetValue(MAC, out var sensor)) return sensor;
+            return new WyzeSensor()
+            {
+                MAC = MAC,
+                Type = Type,
+                Version = 0
+            }; 
+        }
 
     }
 }

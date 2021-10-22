@@ -19,16 +19,7 @@ namespace TestApp
             using (var db = new WyzeDbContext( options.Options))
             {
                 db.Database.EnsureDeleted();
-                db.Database.EnsureCreated();
-                Console.WriteLine("getting events");
-                var events = db.Events
-                    .Include(x => x.Sensor)
-                    .Include(x => x.EventType);
-
-                foreach (var e in events)
-                {
-                    Console.WriteLine($"Event: {e.Sensor.MAC} Type: {e.EventType.Type} ");
-                }
+                d
             }
             Console.WriteLine("Hello World!");
         }

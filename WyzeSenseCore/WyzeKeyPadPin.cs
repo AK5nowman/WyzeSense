@@ -21,7 +21,7 @@ namespace WyzeSenseCore
             RawData = new Memory<byte>(Data.ToArray());
 
             RawData = new Memory<byte>(Data.ToArray());
-            MAC = ASCIIEncoding.ASCII.GetString(Data.Slice(1, 8));
+            MAC = string.Format("{0}.c",ASCIIEncoding.ASCII.GetString(Data.Slice(1, 8)));
             SignalStrength = Data[Data[0xA] + 0xB];
             BatteryLevel = Data[0xC];
             ServerTime = DateTime.Now;

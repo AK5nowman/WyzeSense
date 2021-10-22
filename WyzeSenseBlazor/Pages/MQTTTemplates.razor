@@ -10,11 +10,8 @@
 <Table TItem="DatabaseProvider.Models.Template" DataSource="@templates" PageSize="@pageSize">
     <RowTemplate>
         <Column @bind-Field="@context.Name" />
-        <Column Title="EventType" TData=string>
-            @context.EventType.Type
-        </Column>
         <Column Title="Sensor Type" TData=string>
-            @context.SensorType.Type
+            @context.SensorType
         </Column>
     </RowTemplate>
     <ExpandTemplate>

@@ -15,12 +15,9 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
 
         [MaxLength(128)]
         public string Name { get; set; }
-        public int SensorTypeId { get; set; }
-        public int EventTypeId { get; set; }
+        public int SensorType { get; set; }
 
         //Navigational
-        public WyzeSensorTypeModel SensorType { get; set; }
-        public WyzeEventTypeModel EventType { get; set; }
         public List<PayloadPackage> PayloadPackages { get; set; }
     }
 }

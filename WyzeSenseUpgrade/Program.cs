@@ -155,7 +155,7 @@ namespace WyzeSenseUpgrade
                                         Console.WriteLine("Failed to get PostDownload crc32");
 
                                     Console.WriteLine("*********************");
-                                    Console.WriteLine("***Reseting Device***");
+                                    Console.WriteLine("***Resetting Device***");
                                     Console.WriteLine("*********************");
                                     await cmdReset();
                                 }

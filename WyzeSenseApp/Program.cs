@@ -8,14 +8,15 @@ namespace WyzeSenseApp
 {
     class Program
     {
+        private static WyzeSenseCore.IWyzeSenseLogger mylogger;
         static async Task Main(string[] args)
         {
-            ILogger mylogger = new WyzeSenseApp.Logger();
+            mylogger = new Logger();
             //
 
             WyzeSenseCore.WyzeDongle dongle = new WyzeSenseCore.WyzeDongle(mylogger);
             dongle.OpenDevice(args[0]);
-            dongle.OnSensorAlarm += Dongle_OnSensorAlarm;
+            dongle.OnSensorEvent += Dongle_OnSensorEvent;
             dongle.OnAddSensor += Dongle_OnAddSensor;
             dongle.OnRemoveSensor += Dongle_OnRemoveSensor;
             dongle.OnDongleStateChange += Dongle_OnDongleStateChange;
@@ -56,7 +57,7 @@ namespace WyzeSenseApp
                     case "del":
                         if (line.Split(' ').Length < 2) break;
                         string mac = line.Split(' ')[1];
-                        if (mac.Length != 8) { Console.WriteLine("Invalid MAC"); break; }
+                        if (mac.Length != 8) { mylogger.LogError("Invalid MAC"); break; }
 
                         dongle.DeleteSensorAsync(mac);
 
@@ -65,7 +66,7 @@ namespace WyzeSenseApp
                         dongle.RequestCC1310Update();
                         break;
                     default:
-                        Console.WriteLine("Type 'q' to exit");
+                        mylogger.LogInformation("Type 'q' to exit");
                         break;
                 }
             }
@@ -75,22 +76,22 @@ namespace WyzeSenseApp
 
         private static void Dongle_OnDongleStateChange(object sender, WyzeSenseCore.WyzeDongleState e)
         {
-            Console.WriteLine($"Dongle Change: {e.ToString()}");
+            mylogger.LogInformation($"Dongle Change: {e.ToString()}");
         }
 
         private static void Dongle_OnRemoveSensor(object sender, WyzeSenseCore.WyzeSensor e)
         {
-            Console.WriteLine($"Sensor removed {e.MAC}");
+            mylogger.LogInformation($"Sensor removed {e.MAC}");
         }
 
         private static void Dongle_OnAddSensor(object sender, WyzeSenseCore.WyzeSensor e)
         {
-            Console.WriteLine($"Sensor added {e.MAC}");
+            mylogger.LogInformation($"Sensor added {e.MAC}");
         }
 
-        private static void Dongle_OnSensorAlarm(object sender, WyzeSenseCore.WyzeSenseEvent e)
+        private static void Dongle_OnSensorEvent(object sender, WyzeSenseCore.WyzeSenseEvent e)
         {
-            Console.WriteLine($"Alarm received {e.ToString()}");
+            mylogger.LogInformation($"Alarm received {e.ToString()}");
         }
     }
 }

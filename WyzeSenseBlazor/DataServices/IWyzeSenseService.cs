@@ -7,11 +7,11 @@ using WyzeSenseBlazor.DatabaseProvider.Models;
 
 namespace WyzeSenseBlazor.DataServices
 {
-    interface IWyzeSenseService 
+    public interface IWyzeSenseService 
     {
         event EventHandler<WyzeSensorModel> OnAddSensor;
         event EventHandler<string> OnRemoveSensor;
-        event EventHandler<WyzeEventModel> OnSensorAlarm;
+        event EventHandler<WyzeSenseEvent> OnEvent;
         event EventHandler<WyzeDongleState> OnDongleStateChange;
         event EventHandler<string> OnFailStart;
 
@@ -20,12 +20,11 @@ namespace WyzeSenseBlazor.DataServices
         void Stop();
         void SetLEDOn();
         void SetLEDOff();
-        void StartScanAsync(int Timeout);
+        Task StartScanAsync(int Timeout = 60 * 1000);
         Task StopScanAsync();
         Task RequestDeleteSensor(string MAC);
         void RequestRefreshSensorListAsync();
         Task<WyzeSensorModel[]> GetSensorAsync();
-        Task<WyzeEventModel[]> GetWyzeEventsAsync(string MAC = null, int? count = null, int? page = null);
         WyzeDongleState GetDongleState();
     }
 }

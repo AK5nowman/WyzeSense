@@ -3,8 +3,10 @@
 @using WyzeSenseBlazor.DataServices
 @using WyzeSenseCore
 @using AntDesign
+@using System.Diagnostics
 @using WyzeSenseBlazor.DatabaseProvider.Models
 @inject IWyzeSenseService SensorService
+@inject DrawerService DrawerService
 
 <h3>Wyze</h3>
 @if (dongle == null)
@@ -32,17 +34,25 @@ else
         <DescriptionsItem Title="Device Type">@dongle.DeviceType</DescriptionsItem>
         <DescriptionsItem Title="Auth State">@dongle.AuthState</DescriptionsItem>
         <DescriptionsItem Title="Version" Span="2">@dongle.Version</DescriptionsItem>
-        <DescriptionsItem Title="Action" Span="2">
-            <Tooltip Title=@("LED")>
-                <Switch Checked="true" OnChange="(state)=> { if (state) SensorService.SetLEDOn(); else SensorService.SetLEDOff(); }">
-                    <CheckedChildrenTemplate>
-                        <Icon Type="bulb" Theme="outline" />
-                    </CheckedChildrenTemplate>
-                    <UnCheckedChildrenTemplate>
-                        <Icon Type="bulb" Theme="fill" />
-                    </UnCheckedChildrenTemplate>
-                </Switch>
-            </Tooltip>
+        <DescriptionsItem Title="LED" Span="1">
+            <AntDesign.Switch Checked="true" OnChange="(state)=> { if (state) SensorService.SetLEDOn(); else SensorService.SetLEDOff(); }">
+                <CheckedChildrenTemplate>
+                    <Icon Type="bulb" Theme="outline" />
+                </CheckedChildrenTemplate>
+                <UnCheckedChildrenTemplate>
+                    <Icon Type="bulb" Theme="fill" />
+                </UnCheckedChildrenTemplate>
+            </AntDesign.Switch>
+        </DescriptionsItem>
+        <DescriptionsItem Title="Inclusion" Span="1">
+            @if (!dongle.IsInclusive)
+            {
+                <Button type="primary" OnClick="_=> SensorService.StartScanAsync()">Start</Button>
+            }
+            else
+            {
+                <Button type="primary" OnClick="_=> SensorService.StopScanAsync()" Danger>Stop</Button>
+            }
         </DescriptionsItem>
     </Descriptions>
 }
@@ -53,10 +63,10 @@ else
 }
 else
 {
-
-    <Table Title="Sensors" TItem="WyzeSensorModel" DataSource="sensorCollection.Values.ToArray()" RowExpandable="@((record)=> record.Data.Events.Count() > 0)">
+    <Table Title="Sensors" TItem="WyzeSensorModel" DataSource="sensorCollection.Values.ToArray()">
         <RowTemplate Context="sensorContext">
             <Column @bind-Field="@sensorContext.MAC" />
+            <Column @bind-Field="@sensorContext.Alias" />
             @if (sensorContext.LastActive == DateTime.MinValue)
             {
                 <Column @bind-Field="@sensorContext.LastActive">-</Column>
@@ -65,30 +75,15 @@ else
             {
                 <Column @bind-Field="@sensorContext.LastActive" />
             }
+            <Column @bind-Field="@sensorContext.Description" />
+            <Column @bind-Field="@sensorContext.SensorType" />
             <ActionColumn>
-                <Popconfirm Title="Sure to delete?" OnConfirm="()=>OnSensorDelete(sensorContext.MAC)" OkText="Yes" CancelText="No">
+                <Button Type="button" Icon="edit" Size="small" OnClick="_=>OpenDrawer(sensorContext.MAC)" />
+                <Popconfirm Title="Sure to delete?" OnConfirm="_=>SensorDelete(sensorContext.MAC)" OkText="Yes" CancelText="No">
                     <Button Type="primary" Icon="delete" Size="small" Danger />
                 </Popconfirm>
             </ActionColumn>
         </RowTemplate>
-        <ExpandTemplate>
-    <Table Title="Events" TItem="WyzeEventModel" DataSource="@context.Data.Events">
-        <RowTemplate Context="eventContext">
-            <Column @bind-Field="@eventContext.Time" />
-            <Column Title="Type" TData="string">@eventContext.EventType.Type</Column>
-            <Column Title="State" TData="string">
-                @{  
-                    var color = eventContext.State.Abnormal ? "red" : "green";
-                    <Tag Color="@color">@eventContext.State.Type</Tag>
-                    }
-            </Column>
-            <Column @bind-Field="@eventContext.Battery" />
-            <Column @bind-Field="@eventContext.Signal" />
-            <Column @bind-Field="@eventContext.EventId" />
-        </RowTemplate>
-    </Table>
-
-        </ExpandTemplate>
     </Table>
 }
 
@@ -104,13 +99,14 @@ else
 
     private Dictionary<string, WyzeSensorModel> sensorCollection;
     private WyzeDongleState dongle;
+    string mac = "AABBCCDD";
 
     protected override async Task OnInitializedAsync()
     {
         sensorCollection = new();
 
         dongle = SensorService.GetDongleState();
-        this.SensorService.OnSensorAlarm += OnSensorAlarm;
+        this.SensorService.OnEvent += OnSensorAlarm;
         this.SensorService.OnDongleStateChange += OnDongleStateChange;
         SensorService.OnAddSensor += OnAddSensor;
         SensorService.OnRemoveSensor += OnRemoveSensor;
@@ -121,6 +117,7 @@ else
             sensorCollection.TryAdd(sensor.MAC, sensor);
 
         }
+        Console.WriteLine("Testing");
 
     }
     private async void OnRemoveSensor(object sender, string sensorMAC)
@@ -133,18 +130,16 @@ else
         sensorCollection.Add(sensor.MAC, sensor);
         await InvokeAsync(this.StateHasChanged);
     }
-    private async void OnSensorAlarm(object sender, WyzeEventModel wyzeEvent)
+    private async void OnSensorAlarm(object sender, WyzeSenseEvent wyzeEvent)
     {
-        if (sensorCollection.TryGetValue(wyzeEvent.Sensor.MAC, out var sensor))
-        {
-            sensor.Events.Add(wyzeEvent);
-        }
         await InvokeAsync(this.StateHasChanged);
     }
 
-    private async void OnSensorDelete(string MAC)
+    private async void SensorDelete(string MAC)
     {
-        await SensorService.RequestDeleteSensor(MAC);
+
+        Console.Write("Teststsett");
+        //await SensorService.RequestDeleteSensor(MAC);
     }
 
     private async void OnDongleStateChange(object sender, WyzeDongleState state)
@@ -156,6 +151,17 @@ else
     private void OnLEDSwitchChange(bool newState)
     {
         Console.WriteLine("New state:" + newState);
+    }
+
+    private async Task OpenDrawer(string MAC)
+    {
+        var options = new DrawerOptions()
+        {
+            Title = "Edit Sensor",
+            Width = 350
+        };
+        Console.WriteLine("Test");
+        var result = await DrawerService.CreateAsync<WyzeSenseBlazor.Component.WyzeSensor, WyzeSensorModel, WyzeSensorModel>(options, sensorCollection[MAC]);
     }
 
 }

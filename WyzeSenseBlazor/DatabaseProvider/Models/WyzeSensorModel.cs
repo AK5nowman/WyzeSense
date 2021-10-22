@@ -15,13 +15,8 @@ namespace WyzeSenseBlazor.DatabaseProvider.Models
         public string Alias { get; set; }
         public string Description { get; set; }
         public DateTime LastActive { get; set; }
-        public int SensorTypeId { get; set; }
+        public int SensorType { get; set; }
         
-        //Navigation
-        public WyzeSensorTypeModel SensorType { get; set; }
-
-        //Relation
-        public List<WyzeEventModel> Events { get; set; } = new();
         public List<Topics> Topics { get; set; }
 
     }

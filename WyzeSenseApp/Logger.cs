@@ -7,25 +7,18 @@ using System.Threading.Tasks;
 
 namespace WyzeSenseApp
 {
-    public class Logger: ILogger
+    public class Logger: WyzeSenseCore.IWyzeSenseLogger
     {
-        public IDisposable BeginScope<TState>(TState state)
+        public void Log(string level, string message)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("[{0}] {1} {2}", level, DateTime.Now, message);
         }
+        public void LogTrace(string message) => Log("Trace", message);
+        public void LogInformation(string message) => Log("Information", message);
+        public void LogDebug(string message) => Log("Debug", message);
+        public void LogWarning(string message) => Log("Warning", message);
+        public void LogError(string message) => Log("Error", message);
 
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            throw new NotImplementedException();
-        }
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-        {
-            if (logLevel == LogLevel.Trace) return;
-
-            Console.WriteLine("[{0}]({1}) - {2}", logLevel.ToString().PadRight(11, ' '), DateTime.Now, state);
-            if(exception != null)
-                Console.WriteLine(exception.ToString());
-        }
     }
 }

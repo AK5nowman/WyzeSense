@@ -1,7 +1,20 @@
 ﻿@using WyzeSenseCore
+@using AntDesign;
 
-<h3>Component</h3>
+@inherits FeedbackComponent<DatabaseProvider.Models.WyzeSensorModel, DatabaseProvider.Models.WyzeSensorModel>
+
+<Form Model="@sensor">
+    <FormItem Label="MAC">
+        @context.MAC
+    </FormItem>
+</Form>
 
 @code {
-
-    }
+    
+    DatabaseProvider.Models.WyzeSensorModel sensor { get; set; }
+        protected override void OnInitialized()
+        {
+            sensor = base.Options;
+            base.OnInitialized();
+        }
+}
