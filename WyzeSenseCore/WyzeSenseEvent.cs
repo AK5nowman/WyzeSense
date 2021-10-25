@@ -18,17 +18,6 @@ namespace WyzeSenseCore
         Motionv2 = 0x0F,
         Unknown
     }
-    public enum WyzeSensorState
-    {
-        Closed,
-        Open,
-        Active,
-        Inactive,
-        Wet,
-        Dry,
-        One,
-        Zero
-    }
     public enum WyzeEventType : byte
     {
         Alarm = 0xA2,

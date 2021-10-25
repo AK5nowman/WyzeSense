@@ -630,7 +630,7 @@ namespace WyzeSenseCore
                     pinEvent.Data.Add("Pin", Pin);
 
                     _logger.LogInformation($"[Dongle][KeypadDataReceived] Pin event received");
-                    if(OnKeyPadPin !=null)
+                    if(OnSensorEvent != null)
                         dataProcessor.Queue(() => OnSensorEvent.Invoke(this, pinEvent));
                     break;
                 case 0xC:
