@@ -42,7 +42,6 @@ namespace WyzeSenseCore
         public event EventHandler<WyzeSensor> OnRemoveSensor;
         public event EventHandler<WyzeSenseEvent> OnSensorEvent;
         public event EventHandler<WyzeDongleState> OnDongleStateChange;
-        public event EventHandler<WyzeKeyPadPin> OnKeyPadPin;
 
         private IWyzeSenseLogger _logger;
         
@@ -611,10 +610,28 @@ namespace WyzeSenseCore
                     _logger.LogWarning($"[Dongle][KeypadDataReceived] Keypad({MAC}) Request Profile status - is it requesting a response??");
                     break;
                 case 8:
-                    WyzeKeyPadPin pinEvent = new(Data);
-                    _logger.LogInformation($"[Dongle][KeypadDataReceived] Pin - {pinEvent}");
+                    var pinEvent = new WyzeSenseEvent()
+                    {
+                        Sensor = getSensor(MAC, (WyzeSensorType)Data[0x0E]),
+                        ServerTime = DateTime.Now,
+                        EventType = WyzeEventType.UserAction,
+                        Data = new()
+                        {
+                            { "Battery", Data[0x0C] },//Not confident
+                            { "Signal", Data[Data[0xA] + 0xB] }
+                        }
+                    };
+
+                    //Extract pin. 
+                    ReadOnlySpan<byte> pinRaw = Data.Slice(0xF, Data[0xA] - 6);
+                    string Pin = "";
+                    foreach (byte b in pinRaw)
+                        Pin += b.ToString();
+                    pinEvent.Data.Add("Pin", Pin);
+
+                    _logger.LogInformation($"[Dongle][KeypadDataReceived] Pin event received");
                     if(OnKeyPadPin !=null)
-                        dataProcessor.Queue(() => OnKeyPadPin.Invoke(this, pinEvent));
+                        dataProcessor.Queue(() => OnSensorEvent.Invoke(this, pinEvent));
                     break;
                 case 0xC:
                     _logger.LogInformation($"[Dongle][KeypadDataReceived] Keypad({MAC}) Some sort of alarm event?");
