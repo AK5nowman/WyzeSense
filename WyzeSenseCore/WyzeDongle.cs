@@ -513,6 +513,7 @@ namespace WyzeSenseCore
                     break;
                 case Command.CommandIDs.GetSensorListResp:
                     _logger.LogDebug($"[Dongle][commandCallback] GetSensorResp");
+                    _logger.LogTrace($"[Dongle][commandCallback] {DataToString(Data)}");
                     WyzeSensor sensor = new WyzeSensor(Data);
                     tempScanSensors.TryAdd(sensor.MAC, sensor);
                     actualSensorCount++;
@@ -652,7 +653,11 @@ namespace WyzeSenseCore
         }
         private WyzeSensor getSensor(string MAC, WyzeSensorType Type)
         {
-            if (sensors.TryGetValue(MAC, out var sensor)) return sensor;
+            if (sensors.TryGetValue(MAC, out var sensor))
+            {
+                sensor.Type = Type;
+                return sensor;
+            }
             return new WyzeSensor()
             {
                 MAC = MAC,

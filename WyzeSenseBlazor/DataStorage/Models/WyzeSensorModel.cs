@@ -5,18 +5,15 @@ using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WyzeSenseBlazor.DatabaseProvider.Models
+namespace WyzeSenseBlazor.DataStorage.Models
 {
     public class WyzeSensorModel
     {
-        [Key]
-        [MaxLength(8)]
         public string MAC { get; set; }
         public string Alias { get; set; }
         public string Description { get; set; }
-        public DateTime LastActive { get; set; }
         public int SensorType { get; set; }
-        
+        public DateTime LastActive {get; set; }
         public List<Topics> Topics { get; set; }
 
     }

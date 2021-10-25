@@ -7,8 +7,7 @@ namespace WyzeSenseBlazor.DataServices
 {
     public interface IMqttClientService : IHostedService,
                                           IMqttClientConnectedHandler,
-                                          IMqttClientDisconnectedHandler,
-                                          IMqttApplicationMessageReceivedHandler
+                                          IMqttClientDisconnectedHandler
     {
     }
 }

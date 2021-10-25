@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using WyzeSenseCore;
-using WyzeSenseBlazor.DatabaseProvider.Models;
+using WyzeSenseBlazor.DataStorage.Models;
 
 namespace WyzeSenseBlazor.DataServices
 {
@@ -26,5 +26,8 @@ namespace WyzeSenseBlazor.DataServices
         void RequestRefreshSensorListAsync();
         Task<WyzeSensorModel[]> GetSensorAsync();
         WyzeDongleState GetDongleState();
+
+        Task SetAlias(string MAC, string Alias);
+        Task SetDescription(string MAC, string Description);
     }
 }

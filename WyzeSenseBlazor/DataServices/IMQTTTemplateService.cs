@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using WyzeSenseBlazor.DatabaseProvider.Models;
+using WyzeSenseBlazor.DataStorage.Models;
 
 namespace WyzeSenseBlazor.DataServices
 {

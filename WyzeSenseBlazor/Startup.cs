@@ -1,17 +1,12 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WyzeSenseBlazor.DataServices;
+using WyzeSenseBlazor.DataStorage;
 using WyzeSenseCore;
-using Microsoft.EntityFrameworkCore;
 using WyzeSenseBlazor.Settings;
 
 namespace WyzeSenseBlazor
@@ -55,7 +50,12 @@ namespace WyzeSenseBlazor
             services.AddAntDesign();
             services.AddMqttClientHostedService();
 
-            services.AddDbContextFactory<DatabaseProvider.WyzeDbContext>(options => options.UseSqlite(string.Format($"Data Source={AppSettingsProvider.DatabaseSettings.DatabasePath}")));
+
+            services.AddSingleton<IDataStoreOptions>(new DataStoreOptions()
+            {
+                Path = AppSettingsProvider.DatabaseSettings.DatabasePath
+            });
+            services.AddSingleton<IDataStoreService, DataStoreService>();
 
             services.AddSingleton<IWyzeSenseLogger, WyzeLogger>();
             services.AddSingleton<IWyzeDongle, WyzeDongle>();

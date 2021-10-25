@@ -1,17 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.IO;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using WyzeSenseBlazor.DatabaseProvider;
-using WyzeSenseBlazor.DatabaseProvider.Models;
 using WyzeSenseCore;
-using System.Threading.Channels;
 using WyzeSenseBlazor.Settings;
+using WyzeSenseBlazor.DataStorage;
+using WyzeSenseBlazor.DataStorage.Models;
+using System.Collections.Generic;
 
 namespace WyzeSenseBlazor.DataServices
 {
@@ -19,19 +16,19 @@ namespace WyzeSenseBlazor.DataServices
     {
         private readonly ILogger _logger;
         private readonly WyzeSenseCore.IWyzeDongle _wyzeDongle;
-        private readonly IDbContextFactory<WyzeDbContext> _dbContextFactory;
+        private readonly IDataStoreService _dataStore;
 
         private string devicePath;
 
         private Task processTask;
 
         private WyzeDongleState dongleState;
-        public WyzeSenseService(ILogger<WyzeSenseService> logger, WyzeSenseCore.IWyzeDongle wyzeDongle, IDbContextFactory<DatabaseProvider.WyzeDbContext> dbContextFactory)
+        public WyzeSenseService(ILogger<WyzeSenseService> logger, WyzeSenseCore.IWyzeDongle wyzeDongle, IDataStoreService dataStore)
         {
             _logger = logger;
             _logger.LogInformation($"Creating WyzeSenseService");
 
-            _dbContextFactory = dbContextFactory;
+            _dataStore = dataStore;
             _wyzeDongle = wyzeDongle;
 
             devicePath = AppSettingsProvider.WyzeSettings.UsbPath;
@@ -54,6 +51,7 @@ namespace WyzeSenseBlazor.DataServices
         private bool running = false;
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            
             //Let us try to start
             if (!_wyzeDongle.OpenDevice(devicePath))
             {
@@ -66,6 +64,7 @@ namespace WyzeSenseBlazor.DataServices
             await _wyzeDongle.StartAsync(cancellationToken);
             _logger.LogInformation("[ExecuteAsync] Finished dongle start");
             running = false;
+            
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -81,29 +80,18 @@ namespace WyzeSenseBlazor.DataServices
         }
         private async void _wyzeDongle_OnSensorEvent(object sender, WyzeSenseEvent e)
         {
-            using (var dbContext = _dbContextFactory.CreateDbContext())
-            {
-                var sensorModel = await GetOrCreateSensor(e.Sensor);
-                
-                sensorModel.LastActive = e.ServerTime;
-
-                OnEvent?.Invoke(this, e);
-            }
+            var dbSensor = await GetOrCreateSensor(e.Sensor);
+            dbSensor.LastActive = DateTime.Now;
+            OnEvent?.Invoke(this, e);
         }
 
 
         private async void _wyzeDongle_OnRemoveSensor(object sender, WyzeSensor e)
         {
-
-            using (var dbContext = _dbContextFactory.CreateDbContext())
+            if(_dataStore.DataStore.Sensors.Remove(e.MAC))
             {
-                //Need to delete all items starting with the same mac, supports climate sensors and keypad event. 
-                var sensorsToRemove = dbContext.Sensors.Where(w => w.MAC.StartsWith(e.MAC)).Select(s => s);
-                dbContext.Sensors.RemoveRange(sensorsToRemove);
-
-                //TODO:Verify this deletes events and not model type
-                await dbContext.SaveChangesAsync();
                 OnRemoveSensor?.Invoke(this, e.MAC);
+                await _dataStore.Save();
             }
         }
         
@@ -115,26 +103,22 @@ namespace WyzeSenseBlazor.DataServices
         }
         private async Task<WyzeSensorModel> GetOrCreateSensor(WyzeSensor Sensor)
         {
-            using (var dbContext = _dbContextFactory.CreateDbContext())
+            if(_dataStore.DataStore.Sensors.TryGetValue(Sensor.MAC, out var existSensor))
             {
-                //Gets existing sensor model if it exists.
-                var sensorModel = await dbContext.Sensors
-                    .Where(p => p.MAC == Sensor.MAC)
-                    .FirstOrDefaultAsync();
-                if (sensorModel != null)
-                    return sensorModel;
-
-                sensorModel = new WyzeSensorModel()
-                {
-                    Alias = "",
-                    Description = "",
-                    LastActive = DateTime.Now,
-                    MAC = Sensor.MAC,
-                    SensorType = (int)Sensor.Type
-                };
-                await dbContext.Sensors.AddAsync(sensorModel);
-                return sensorModel;
+                return existSensor;
             }
+
+            var sensorModel = new WyzeSensorModel()
+            {
+                Alias = "",
+                Description = "",
+                MAC = Sensor.MAC,
+                SensorType = (int)Sensor.Type,
+                LastActive = DateTime.Now
+            };
+            _dataStore.DataStore.Sensors.TryAdd(sensorModel.MAC, sensorModel);
+            await _dataStore.Save();
+            return sensorModel;
         }
 
 
@@ -172,12 +156,7 @@ namespace WyzeSenseBlazor.DataServices
 
         public async Task<WyzeSensorModel[]> GetSensorAsync()
         {
-            using (var dbContext = _dbContextFactory.CreateDbContext())
-            {
-                var query = dbContext.Sensors;
-                _logger.LogInformation(query.ToQueryString());
-                return await query.ToArrayAsync();
-            }
+            return _dataStore.DataStore.Sensors.Values.ToArray();
         }
 
         public async Task RequestDeleteSensor(string MAC)
@@ -191,6 +170,22 @@ namespace WyzeSenseBlazor.DataServices
             return _wyzeDongle.GetDongleState();
         }
 
+        public async Task SetAlias(string MAC, string Alias)
+        {
+            if (_dataStore.DataStore.Sensors.TryGetValue(MAC, out var sensor))
+            {
+                sensor.Alias = Alias;
+                await _dataStore.Save();
+            }
+        }
 
+        public async Task SetDescription(string MAC, string Description)
+        {
+            if (_dataStore.DataStore.Sensors.TryGetValue(MAC, out var sensor))
+            {
+                sensor.Description = Description;
+                await _dataStore.Save();
+            }
+        }
     }
 }
