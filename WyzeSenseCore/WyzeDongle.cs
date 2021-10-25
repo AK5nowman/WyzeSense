@@ -335,7 +335,7 @@ namespace WyzeSenseCore
                         Version = version
                     };
                     lastAddedSensorMAC = mac;
-                    WriteCommandAsync(BasePacket.SetSensorRandomDate(mac)).FireAndForget();
+                    WriteCommandAsync(BasePacket.SetSensorRandomDate(mac)).FireAndForget(_logger);
                     break;
                 case Command.CommandIDs.SensorRandomDateResp:
                     string rmac = ASCIIEncoding.ASCII.GetString(Data.Slice(6, 8));
@@ -351,7 +351,7 @@ namespace WyzeSenseCore
 
                     _logger.LogInformation($"[Dongle][dataReceived] Verifying Sensor: {lastAddedSensorMAC}");
 
-                    WriteCommandAsync(BasePacket.VerifySensor(lastAddedSensorMAC)).FireAndForget();
+                    WriteCommandAsync(BasePacket.VerifySensor(lastAddedSensorMAC)).FireAndForget(_logger);
                     break;
                 case Command.CommandIDs.NotifyEventLog:
                     //timestamp is Slice(5,8);
@@ -509,7 +509,7 @@ namespace WyzeSenseCore
                     _logger.LogDebug($"[Dongle][commandCallback] There are {expectedSensorCount} sensor bound to this dongle");
                     this.tempScanSensors = new Dictionary<string, WyzeSensor>();
                     actualSensorCount = 0;
-                    this.WriteCommandAsync(BasePacket.RequestSensorList((byte)expectedSensorCount)).FireAndForget();
+                    this.WriteCommandAsync(BasePacket.RequestSensorList((byte)expectedSensorCount)).FireAndForget(_logger);
                     break;
                 case Command.CommandIDs.GetSensorListResp:
                     _logger.LogDebug($"[Dongle][commandCallback] GetSensorResp");

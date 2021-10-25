@@ -8,7 +8,7 @@ namespace WyzeSenseCore
 {
     internal static class TaskExtension
     {
-        public static async void FireAndForget(this Task task)
+        public static async void FireAndForget(this Task task, IWyzeSenseLogger logger)
         {
             try
             {
@@ -16,7 +16,7 @@ namespace WyzeSenseCore
             }
             catch (Exception e)
             {
-                Logger.Debug($"[FireAndForget] Task Error: {e.ToString()}");
+                logger.LogDebug($"[FireAndForget] Task Error: {e.ToString()}");
             }
         }
     }

@@ -51,9 +51,6 @@ namespace WyzeSenseApp
                         dongle.Stop();
                         done = true;
                         break;
-                    case "loglevel":
-                        WyzeSenseCore.Logger.LogLevel = 4;
-                        break;
                     case "del":
                         if (line.Split(' ').Length < 2) break;
                         string mac = line.Split(' ')[1];
