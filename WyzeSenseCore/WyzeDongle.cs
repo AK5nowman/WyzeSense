@@ -598,8 +598,8 @@ namespace WyzeSenseCore
                     };
                     if (Data[0x0E] == 0x02)
                     {
-                        keypadEvent.Data.Add("Mode", Data[0x0F]);
-                        keypadEvent.Data.Add("ModeName", (WyzeKeyPadState)Data[0x0F]);
+                        keypadEvent.Data.Add("Mode", Data[0x0F]+1);
+                        keypadEvent.Data.Add("ModeName", ((WyzeKeyPadState)Data[0x0F]+1).ToString());
                     }
                     else
                         keypadEvent.Data.Add("Motion", Data[0x0F]);
