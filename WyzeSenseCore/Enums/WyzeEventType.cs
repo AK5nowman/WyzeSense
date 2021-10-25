@@ -6,15 +6,12 @@ using System.Threading.Tasks;
 
 namespace WyzeSenseCore
 {
-
-    public enum WyzeKeyPadState: byte
+    public enum WyzeEventType : byte
     {
-        Inactive = 0x00,
-        Active = 0x01,
-        Disarmed = 0x02,
-        Home = 0x03,
-        Away = 0x04,
-        Alarm = 0x05,
+        Alarm = 0xA2,
+        Status = 0xA1,
+        Climate = 0xE8,
+        UserAction = 0x99,
         Unknown
     }
 }
