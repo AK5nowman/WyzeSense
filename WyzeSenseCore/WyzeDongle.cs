@@ -593,7 +593,6 @@ namespace WyzeSenseCore
 
                             { "Battery", Data[0x0C] },
                             {  "Signal", Data[Data[0x0A] + 0x0B] }
-
                         }
                     };
                     if (Data[0x0E] == 0x02)
