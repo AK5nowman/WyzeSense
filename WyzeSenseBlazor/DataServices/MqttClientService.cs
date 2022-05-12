@@ -132,7 +132,8 @@ namespace WyzeSenseBlazor.DataServices
 
         public Task HandleDisconnectedAsync(MqttClientDisconnectedEventArgs eventArgs)
         {
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
